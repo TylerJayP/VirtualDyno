@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VirtualDyno.API.Models
@@ -23,11 +23,14 @@ namespace VirtualDyno.API.Models
 
         public PeakValues? Peaks { get; set; }
 
-        [Range(1, 5)]
+        [Range(0, 5)]  // Changed from [Range(1, 5)]
         public int SmoothingLevel { get; set; } = 1;
 
         [Range(3, 6)]
         public int GearUsed { get; set; } = 4;
+
+        [MaxLength(50)]
+        public string CalculationMethod { get; set; } = string.Empty; // ← ADD THIS LINE
 
         [MaxLength(1000)]
         public string Notes { get; set; } = string.Empty;

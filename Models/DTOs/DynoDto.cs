@@ -1,4 +1,4 @@
-namespace VirtualDyno.API.Models.DTOs
+﻿namespace VirtualDyno.API.Models.DTOs
 {
     public class DynoRunCreateDto
     {
@@ -17,6 +17,8 @@ namespace VirtualDyno.API.Models.DTOs
         public DateTime CreatedAt { get; set; }
         public CarConfigurationDto Car { get; set; } = new();
         public int GearUsed { get; set; }
+        public int SmoothingLevel { get; set; } = 1; // ← ADD THIS LINE
+        public string CalculationMethod { get; set; } = string.Empty; // ← ADD THIS LINE
         public PeakValuesDto? Peaks { get; set; }
         public string Notes { get; set; } = string.Empty;
         public bool IsPublic { get; set; }
