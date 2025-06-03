@@ -1,4 +1,4 @@
-# Virtual Dyno Pro
+# Virtual Dyno
 
 Professional automotive dyno analysis tool that transforms AccessPort, Hondata, and OBD2 datalog files into accurate horsepower and torque curves with real-world precision.
 
