@@ -66,8 +66,8 @@ Professional automotive dyno analysis tool that transforms AccessPort and OBD2 d
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/virtual-dyno-pro.git
-cd virtual-dyno-pro
+git clone https://github.com/TylerJayP/VirtualDyno.git
+cd virtualdyno
 ```
 
 ### 2. Backend Setup
@@ -88,8 +88,8 @@ dotnet run
 ```
 
 ### 3. Access the Application
-- **API Documentation**: `https://localhost:7xxx/swagger`
-- **Backend API**: `https://localhost:7xxx/api`
+- **API Documentation**: `https://localhost:xxxx/swagger`
+- **Backend API**: `https://localhost:xxxx/api`
 
 ## Usage
 
