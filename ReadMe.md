@@ -1,6 +1,6 @@
 # Virtual Dyno
 
-Professional automotive dyno analysis tool that transforms AccessPort, Hondata, and OBD2 datalog files into accurate horsepower and torque curves with real-world precision.
+Personal dyno analysis tool that transforms AccessPort, Hondata, and OBD2 datalog files into accurate horsepower and torque curves with real-world precision.
 
 [![.NET](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -29,14 +29,14 @@ Professional automotive dyno analysis tool that transforms AccessPort, Hondata, 
 
 ### Multi-Car Support
 **Pre-configured vehicles with real-world calibration:**
-- **Mazdaspeed3** - 239 WHP target (Achieved: 239.4 WHP)
-- **Subaru WRX/STI** - Supports both MAF and speed density tunes
-- **Mitsubishi Evo** - AWD drivetrain compensation
-- **VW GTI** - Modern efficient drivetrain
-- **Ford Focus ST** - Turbocharged FWD platform
+- **Mazdaspeed3**
+- **Subaru WRX/STI**
+- **Mitsubishi Evo*
+- **VW GTI**
+- **Ford Focus ST**
 
-### Professional Analysis Features
-- **Gear-specific corrections** (3rd, 4th, 5th gear with real gear ratios)
+### Analysis Features
+- **Gear-specific corrections** (3rd, 4th, 5th gear with gear ratios that need some improvements)
 - **Drivetrain loss compensation** (FWD/AWD/RWD specific)
 - **AFR optimization curves** (11.8 AFR target for turbocharged engines)
 - **Knock retard penalties** (real-time timing adjustment effects)
@@ -44,11 +44,11 @@ Professional automotive dyno analysis tool that transforms AccessPort, Hondata, 
 - **Peak detection** with RPM validation
 
 ### Advanced Corrections
-- **MAF sensor trust philosophy** - Primary airflow measurement (like real dynos)
-- **Temperature-based efficiency** - Real air density effects
+- **MAF sensor trust philosophy** - Primary airflow measurement
+- **Temperature-based efficiency** - Air density effects
 - **Knock timing penalties** - Actual power loss from timing retard
 - **Platform-specific calibration** - Individual car scaling factors
-- **Volumetric efficiency curves** - Engine breathing characteristics
+- **Volumetric efficiency curves** - Engine "breathing" characteristics
 
 ## Tech Stack
 
@@ -56,7 +56,7 @@ Professional automotive dyno analysis tool that transforms AccessPort, Hondata, 
 - C# ASP.NET Core 9.0
 - Entity Framework Core
 - SQL Server LocalDB  
-- CsvHelper for robust file processing
+- CsvHelper for file processing
 - Swagger/OpenAPI documentation
 
 **Algorithm:**
