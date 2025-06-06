@@ -61,7 +61,7 @@ const VirtualDyno = () => {
     { value: 5, label: 'Maximum (5)' }
   ];
 
-  // Draw graph on canvas
+  // Draw graph on canvas with improved sizing
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -70,16 +70,35 @@ const VirtualDyno = () => {
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const { width, height } = canvas;
+    
+    // Get the actual display size
+    const rect = canvas.getBoundingClientRect();
+    const displayWidth = rect.width;
+    const displayHeight = rect.height;
+    
+    // Set the internal size to match the display size for crisp rendering
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    canvas.width = displayWidth * devicePixelRatio;
+    canvas.height = displayHeight * devicePixelRatio;
+    
+    // Scale the drawing context so everything draws at the correct size
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    
+    // Use display size for calculations
+    const width = displayWidth;
+    const height = displayHeight;
 
     // Clear canvas
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, width, height);
 
-    // Setup graph dimensions
-    const padding = 60;
-    const graphWidth = width - padding * 2;
-    const graphHeight = height - padding * 2;
+    // Setup graph dimensions with much better proportions
+    const leftPadding = 70; // Fixed larger left padding for Y-axis label
+    const rightPadding = 40; // Smaller right padding
+    const topPadding = 40; // Smaller top padding
+    const bottomPadding = 60; // Fixed bottom padding for X-axis label
+    const graphWidth = width - leftPadding - rightPadding;
+    const graphHeight = height - topPadding - bottomPadding;
 
     // Find data ranges
     const maxRpm = Math.max(...dataToDisplay.map(d => d.rpm), 7000);
@@ -94,52 +113,52 @@ const VirtualDyno = () => {
     
     // Vertical grid lines (RPM)
     for (let rpm = Math.ceil(minRpm / 500) * 500; rpm <= maxRpm; rpm += 500) {
-      const x = padding + ((rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
+      const x = leftPadding + ((rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
       ctx.beginPath();
-      ctx.moveTo(x, padding);
-      ctx.lineTo(x, height - padding);
+      ctx.moveTo(x, topPadding);
+      ctx.lineTo(x, height - bottomPadding);
       ctx.stroke();
       
       // RPM labels
       ctx.fillStyle = '#666';
-      ctx.font = '12px Arial';
+      ctx.font = `${Math.max(8, width * 0.010)}px Arial`;
       ctx.textAlign = 'center';
-      ctx.fillText(rpm.toString(), x, height - padding + 20);
+      ctx.fillText(rpm.toString(), x, height - bottomPadding + 20);
     }
 
     // Horizontal grid lines (Power)
     for (let power = 0; power <= maxPower; power += 50) {
-      const y = height - padding - (power / maxPower) * graphHeight;
+      const y = height - bottomPadding - (power / maxPower) * graphHeight;
       ctx.beginPath();
-      ctx.moveTo(padding, y);
-      ctx.lineTo(width - padding, y);
+      ctx.moveTo(leftPadding, y);
+      ctx.lineTo(width - rightPadding, y);
       ctx.stroke();
       
       // Power labels
       ctx.fillStyle = '#666';
-      ctx.font = '12px Arial';
+      ctx.font = `${Math.max(8, width * 0.010)}px Arial`;
       ctx.textAlign = 'right';
-      ctx.fillText(power.toString(), padding - 10, y + 4);
+      ctx.fillText(power.toString(), leftPadding - 10, y + 5);
     }
 
     // Draw axes
     ctx.strokeStyle = '#666';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(padding, padding);
-    ctx.lineTo(padding, height - padding);
-    ctx.lineTo(width - padding, height - padding);
+    ctx.moveTo(leftPadding, topPadding);
+    ctx.lineTo(leftPadding, height - bottomPadding);
+    ctx.lineTo(width - rightPadding, height - bottomPadding);
     ctx.stroke();
 
     // Draw HP line (red)
     if (dataToDisplay.length > 1) {
       ctx.strokeStyle = '#ff4444';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = Math.max(3, width * 0.002);
       ctx.beginPath();
       
       dataToDisplay.forEach((point, index) => {
-        const x = padding + ((point.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
-        const y = height - padding - (point.horsepower / maxPower) * graphHeight;
+        const x = leftPadding + ((point.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
+        const y = height - bottomPadding - (point.horsepower / maxPower) * graphHeight;
         
         if (index === 0) {
           ctx.moveTo(x, y);
@@ -153,12 +172,12 @@ const VirtualDyno = () => {
     // Draw Torque line (green)
     if (dataToDisplay.length > 1) {
       ctx.strokeStyle = '#44ff44';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = Math.max(3, width * 0.002);
       ctx.beginPath();
       
       dataToDisplay.forEach((point, index) => {
-        const x = padding + ((point.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
-        const y = height - padding - (point.torque / maxPower) * graphHeight;
+        const x = leftPadding + ((point.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
+        const y = height - bottomPadding - (point.torque / maxPower) * graphHeight;
         
         if (index === 0) {
           ctx.moveTo(x, y);
@@ -172,41 +191,47 @@ const VirtualDyno = () => {
     // Draw current point indicator (only during live run)
     if (isRunning && liveGraphData.length > 0) {
       const currentPoint = liveGraphData[liveGraphData.length - 1];
-      const x = padding + ((currentPoint.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
-      const yHP = height - padding - (currentPoint.horsepower / maxPower) * graphHeight;
-      const yTQ = height - padding - (currentPoint.torque / maxPower) * graphHeight;
+      const x = leftPadding + ((currentPoint.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
+      const yHP = height - bottomPadding - (currentPoint.horsepower / maxPower) * graphHeight;
+      const yTQ = height - bottomPadding - (currentPoint.torque / maxPower) * graphHeight;
+      
+      const indicatorSize = Math.max(4, width * 0.008);
       
       // HP indicator
       ctx.fillStyle = '#ff4444';
       ctx.beginPath();
-      ctx.arc(x, yHP, 5, 0, 2 * Math.PI);
+      ctx.arc(x, yHP, indicatorSize, 0, 2 * Math.PI);
       ctx.fill();
       
       // Torque indicator
       ctx.fillStyle = '#44ff44';
       ctx.beginPath();
-      ctx.arc(x, yTQ, 5, 0, 2 * Math.PI);
+      ctx.arc(x, yTQ, indicatorSize, 0, 2 * Math.PI);
       ctx.fill();
     }
 
-    // Draw legend
+    // Draw legend with responsive sizing
+    const legendFontSize = Math.max(8, width * 0.010);
     ctx.fillStyle = '#ff4444';
-    ctx.font = 'bold 14px Arial';
+    ctx.font = `bold ${legendFontSize}px Arial`;
     ctx.textAlign = 'left';
-    ctx.fillText('■ Horsepower', width - 200, 30);
+    ctx.fillText('■ Horsepower', width - 160, 25);
     
     ctx.fillStyle = '#44ff44';
-    ctx.fillText('■ Torque', width - 200, 50);
+    ctx.fillText('■ Torque', width - 160, 25 + legendFontSize + 6);
 
-    // Axis labels
+    // Axis labels with responsive sizing and better positioning
+    const axisLabelSize = Math.max(8, width * 0.010);
     ctx.fillStyle = '#ccc';
-    ctx.font = 'bold 16px Arial';
+    ctx.font = `bold ${axisLabelSize}px Arial`;
     ctx.textAlign = 'center';
-    ctx.fillText('RPM', width / 2, height - 10);
+    ctx.fillText('RPM', width / 2, height - 15);
     
+    // Y-axis label with proper positioning
     ctx.save();
     ctx.translate(20, height / 2);
     ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
     ctx.fillText('HP / TQ', 0, 0);
     ctx.restore();
 
@@ -537,14 +562,14 @@ const VirtualDyno = () => {
       <div style={{
         backgroundColor: '#1a2332',
         color: 'white',
-        padding: '20px 0',
+        padding: '16px 0',
         textAlign: 'center',
         boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
         borderBottom: '1px solid #2d3748'
       }}>
         <h1 style={{ 
           margin: 0, 
-          fontSize: '28px', 
+          fontSize: '24px', 
           fontWeight: '700',
           letterSpacing: '-0.5px',
           background: 'linear-gradient(135deg, #ff4444, #44ff44, #4488ff)',
@@ -555,8 +580,8 @@ const VirtualDyno = () => {
           🏁 Virtual Dyno Pro
         </h1>
         <p style={{ 
-          margin: '8px 0 0 0', 
-          fontSize: '16px', 
+          margin: '6px 0 0 0', 
+          fontSize: '14px', 
           opacity: 0.8,
           fontWeight: '400',
           color: '#a0aec0'
@@ -568,8 +593,8 @@ const VirtualDyno = () => {
       {/* Main Content */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '380px 1fr',
-        height: 'calc(100vh - 180px)',
+        gridTemplateColumns: '360px 1fr',
+        height: 'calc(100vh - 100px)', // Increased available height
         gap: '0'
       }}>
         
@@ -577,7 +602,7 @@ const VirtualDyno = () => {
         <div style={{
           backgroundColor: '#1a202c',
           borderRight: '1px solid #2d3748',
-          padding: '24px',
+          padding: '20px',
           overflowY: 'auto'
         }}>
           
@@ -614,7 +639,7 @@ const VirtualDyno = () => {
             
             {csvFile && (
               <div style={{
-                fontSize: '13px',
+                fontSize: '12px',
                 color: '#a0aec0',
                 backgroundColor: '#2d3748',
                 padding: '8px',
@@ -629,15 +654,15 @@ const VirtualDyno = () => {
 
           {/* Vehicle Settings */}
           <div style={sectionStyle}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#68d391' }}>🚗 Vehicle Setup</h3>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>🚗 Vehicle Setup</h3>
             
             {/* Car Selection */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <label style={{ ...labelStyle, margin: 0, minWidth: '80px' }}>Car:</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <label style={{ ...labelStyle, margin: 0, minWidth: '70px', fontSize: '13px' }}>Car:</label>
               <select 
                 value={dynoSettings.selectedCar}
                 onChange={(e) => setDynoSettings(prev => ({ ...prev, selectedCar: e.target.value }))}
-                style={{ ...inputStyle, flex: 1 }}
+                style={{ ...inputStyle, flex: 1, fontSize: '13px' }}
               >
                 {carOptions.map(car => (
                   <option key={car.value} value={car.value}>{car.label}</option>
@@ -646,22 +671,22 @@ const VirtualDyno = () => {
             </div>
 
             {/* Gear Selection */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Gear Used:</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ ...labelStyle, fontSize: '13px' }}>Gear Used:</label>
+              <div style={{ display: 'flex', gap: '6px' }}>
                 {[3, 4, 5].map(gear => (
                   <button
                     key={gear}
                     onClick={() => setDynoSettings(prev => ({ ...prev, gear }))}
                     style={{
                       flex: 1,
-                      padding: '10px',
+                      padding: '8px',
                       border: dynoSettings.gear === gear ? '2px solid #3182ce' : '1px solid #4a5568',
                       borderRadius: '4px',
                       backgroundColor: dynoSettings.gear === gear ? '#2c5282' : '#2d3748',
                       color: dynoSettings.gear === gear ? 'white' : '#a0aec0',
                       cursor: 'pointer',
-                      fontSize: '14px',
+                      fontSize: '13px',
                       fontWeight: dynoSettings.gear === gear ? '600' : '400',
                       transition: 'all 0.2s ease'
                     }}
@@ -673,13 +698,13 @@ const VirtualDyno = () => {
             </div>
 
             {/* Weight */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Vehicle Weight (lbs):</label>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ ...labelStyle, fontSize: '13px' }}>Vehicle Weight (lbs):</label>
               <input
                 type="number"
                 value={dynoSettings.weight}
                 onChange={(e) => setDynoSettings(prev => ({ ...prev, weight: parseInt(e.target.value) || 0 }))}
-                style={inputStyle}
+                style={{ ...inputStyle, fontSize: '13px' }}
                 min="1000"
                 max="10000"
                 step="50"
@@ -689,15 +714,15 @@ const VirtualDyno = () => {
 
           {/* Dyno Settings */}
           <div style={sectionStyle}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#68d391' }}>⚙️ Dyno Configuration</h3>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>⚙️ Dyno Configuration</h3>
             
             {/* Dyno Type */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <label style={{ ...labelStyle, margin: 0, minWidth: '80px' }}>Type:</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <label style={{ ...labelStyle, margin: 0, minWidth: '70px', fontSize: '13px' }}>Type:</label>
               <select 
                 value={dynoSettings.dynoType}
                 onChange={(e) => setDynoSettings(prev => ({ ...prev, dynoType: e.target.value }))}
-                style={{ ...inputStyle, flex: 1 }}
+                style={{ ...inputStyle, flex: 1, fontSize: '13px' }}
               >
                 {Object.entries(dynoTypes).map(([key, dyno]) => (
                   <option key={key} value={key}>{dyno.name}</option>
@@ -708,11 +733,11 @@ const VirtualDyno = () => {
 
           {/* Environmental Settings */}
           <div style={sectionStyle}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#68d391' }}>🌡️ Environmental</h3>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>🌡️ Environmental</h3>
             
             {/* Temperature */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Temperature: {dynoSettings.temperature}°F</label>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ ...labelStyle, fontSize: '13px' }}>Temperature: {dynoSettings.temperature}°F</label>
               <input 
                 type="range" 
                 min="50" 
@@ -721,14 +746,14 @@ const VirtualDyno = () => {
                 onChange={(e) => setDynoSettings(prev => ({ ...prev, temperature: parseInt(e.target.value) }))}
                 style={{ width: '100%', margin: '4px 0' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#718096' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#718096' }}>
                 <span>50°F</span><span>110°F</span>
               </div>
             </div>
 
             {/* Humidity */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Humidity: {dynoSettings.humidity}%</label>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ ...labelStyle, fontSize: '13px' }}>Humidity: {dynoSettings.humidity}%</label>
               <input 
                 type="range" 
                 min="10" 
@@ -737,7 +762,7 @@ const VirtualDyno = () => {
                 onChange={(e) => setDynoSettings(prev => ({ ...prev, humidity: parseInt(e.target.value) }))}
                 style={{ width: '100%', margin: '4px 0' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#718096' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#718096' }}>
                 <span>10%</span><span>90%</span>
               </div>
             </div>
@@ -749,12 +774,12 @@ const VirtualDyno = () => {
             disabled={!csvData.length || isRunning}
             style={{
               width: '100%',
-              padding: '16px',
+              padding: '14px',
               backgroundColor: isRunning ? '#4a5568' : '#e53e3e',
               color: 'white',
               border: 'none',
               borderRadius: '6px',
-              fontSize: '16px',
+              fontSize: '15px',
               fontWeight: '700',
               cursor: isRunning ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease',
@@ -768,7 +793,7 @@ const VirtualDyno = () => {
         {/* Right Panel - Graph */}
         <div style={{
           backgroundColor: '#1a202c',
-          padding: '24px',
+          padding: '20px',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative'
@@ -781,28 +806,28 @@ const VirtualDyno = () => {
               {dynoResults && !isRunning && (
                 <div style={{
                   position: 'absolute',
-                  top: '30px',
-                  right: '30px',
+                  top: '24px',
+                  right: '24px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   backgroundColor: '#2d3748',
-                  padding: '8px 12px',
+                  padding: '6px 10px',
                   borderRadius: '6px',
                   border: '1px solid #4a5568',
                   zIndex: 10
                 }}>
-                  <label style={{ fontSize: '12px', color: '#a0aec0', fontWeight: '500' }}>
+                  <label style={{ fontSize: '11px', color: '#a0aec0', fontWeight: '500' }}>
                     Smoothing:
                   </label>
                   <select
                     value={smoothingLevel}
                     onChange={(e) => handleSmoothingChange(parseInt(e.target.value))}
                     style={{
-                      padding: '4px 8px',
+                      padding: '3px 6px',
                       border: '1px solid #4a5568',
                       borderRadius: '4px',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       backgroundColor: '#1a202c',
                       color: '#e2e8f0'
                     }}
@@ -820,61 +845,65 @@ const VirtualDyno = () => {
               <div style={{
                 backgroundColor: '#1a1a1a',
                 color: 'white',
-                padding: '20px',
+                padding: '16px',
                 borderRadius: '8px',
-                marginBottom: '20px',
+                marginBottom: '16px',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '20px',
+                gap: '16px',
                 textAlign: 'center'
               }}>
                 <div>
-                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ff4444' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff4444' }}>
                     {isRunning ? currentPeaks.currentHP : (smoothedPeaks ? smoothedPeaks.maxHP : (dynoResults?.peaks?.maxHP || 0))}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#ccc', marginBottom: '3px' }}>
                     {isRunning ? 'CURRENT' : 'PEAK'} HP
                   </div>
                   {!isRunning && (dynoResults || smoothedPeaks) && (
-                    <div style={{ fontSize: '10px', color: '#888' }}>
+                    <div style={{ fontSize: '9px', color: '#888' }}>
                       @ {smoothedPeaks ? smoothedPeaks.maxHPRpm : (dynoResults?.peaks?.maxHPRpm || 0)} RPM
                     </div>
                   )}
                 </div>
                 
                 <div>
-                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#44ff44' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#44ff44' }}>
                     {isRunning ? currentPeaks.currentTorque : (smoothedPeaks ? smoothedPeaks.maxTorque : (dynoResults?.peaks?.maxTorque || 0))}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#ccc', marginBottom: '3px' }}>
                     {isRunning ? 'CURRENT' : 'PEAK'} LB-FT
                   </div>
                   {!isRunning && (dynoResults || smoothedPeaks) && (
-                    <div style={{ fontSize: '10px', color: '#888' }}>
+                    <div style={{ fontSize: '9px', color: '#888' }}>
                       @ {smoothedPeaks ? smoothedPeaks.maxTorqueRpm : (dynoResults?.peaks?.maxTorqueRpm || 0)} RPM
                     </div>
                   )}
                 </div>
                 
                 <div>
-                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#4488ff' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4488ff' }}>
                     {isRunning ? currentPeaks.maxBoost : (smoothedPeaks ? smoothedPeaks.maxBoost : (Math.max(...(liveGraphData.map(d => d.boost) || [0])) || (smoothedData.length > 0 ? Math.max(...smoothedData.map(d => d.boost)) : 0)))}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#ccc', marginBottom: '3px' }}>
                     PEAK BOOST PSI
                   </div>
-                  <div style={{ fontSize: '10px', color: '#888' }}>
+                  <div style={{ fontSize: '9px', color: '#888' }}>
                     {isRunning ? 'LIVE' : 'RECORDED'}
                   </div>
                 </div>
               </div>
 
-              {/* Canvas Graph */}
-              <div style={{ flex: 1, minHeight: '350px', maxHeight: '400px', position: 'relative' }}>
+              {/* Canvas Graph with much improved sizing */}
+              <div style={{ 
+                flex: 1, 
+                position: 'relative',
+                height: 'calc(100vh - 280px)', // Much larger height
+                minHeight: '400px', // Increased minimum
+                maxHeight: '600px' // Increased maximum
+              }}>
                 <canvas
                   ref={canvasRef}
-                  width={700}
-                  height={350}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -893,15 +922,15 @@ const VirtualDyno = () => {
                     }}
                     style={{
                       position: 'absolute',
-                      bottom: '20px',
-                      right: '20px',
-                      padding: '10px 16px',
+                      bottom: '16px',
+                      right: '16px',
+                      padding: '8px 14px',
                       backgroundColor: '#38a169',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '14px',
+                      fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s ease',
                       boxShadow: '0 2px 8px rgba(56, 161, 105, 0.3)',
@@ -924,8 +953,7 @@ const VirtualDyno = () => {
               backgroundColor: '#2d3748',
               borderRadius: '8px',
               border: '2px dashed #4a5568',
-              minHeight: '350px',
-              maxHeight: '400px'
+              minHeight: '400px' // Increased to match new canvas size
             }}>
               <div style={{
                 textAlign: 'center',
