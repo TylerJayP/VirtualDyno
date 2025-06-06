@@ -85,7 +85,7 @@ namespace VirtualDyno.API.Services
             return Math.Max(baseHP, 0);
         }
 
-        private double CalculateFromMAF(AdvancedDynoData data, CarPreset carPreset)
+        public double CalculateFromMAF(AdvancedDynoData data, CarPreset carPreset)
         {
             // Method 1: MAF-based (most accurate)
             double baseHP = data.MassAirflow * 1.08;
@@ -99,7 +99,7 @@ namespace VirtualDyno.API.Services
             return baseHP;
         }
 
-        private double CalculateFromMAP(AdvancedDynoData data, CarPreset carPreset)
+        public double CalculateFromMAP(AdvancedDynoData data, CarPreset carPreset)
         {
             // Method 2: MAP-based calculation for speed density tunes
             // Calculate theoretical mass airflow from MAP, RPM, and displacement
@@ -144,7 +144,7 @@ namespace VirtualDyno.API.Services
             return baseHP;
         }
 
-        private double CalculateFromLoad(AdvancedDynoData data, CarPreset carPreset)
+        public double CalculateFromLoad(AdvancedDynoData data, CarPreset carPreset)
         {
             // Method 3: Load-based calculation (universal fallback)
             // Engine load represents how hard the engine is working
@@ -166,7 +166,7 @@ namespace VirtualDyno.API.Services
             return baseHP;
         }
 
-        private double CalculateSimpleAFRCorrection(double afr, bool isForceInduction)
+        public double CalculateSimpleAFRCorrection(double afr, bool isForceInduction)
         {
             // Simple AFR correction - just like adjusting for rich/lean conditions
             double optimalAFR = isForceInduction ? 11.8 : 12.8;
@@ -183,7 +183,7 @@ namespace VirtualDyno.API.Services
                 return 1.0 - 0.05 - (afrDeviation - 2.0) * 0.03; // Steeper penalty
         }
 
-        private double CalculateSimpleAtmosphericCorrection(double intakeTemp)
+        public double CalculateSimpleAtmosphericCorrection(double intakeTemp)
         {
             if (intakeTemp <= 0) return 1.0;
 
@@ -194,7 +194,7 @@ namespace VirtualDyno.API.Services
             return Math.Max(Math.Min(tempCorrection, 1.05), 0.95);
         }
 
-        private double CalculateSimpleVE(int rpm)
+        public double CalculateSimpleVE(int rpm)
         {
             // Simple volumetric efficiency curve - just engine breathing characteristics
             // No boost corrections - MAF already accounts for actual airflow
@@ -211,7 +211,7 @@ namespace VirtualDyno.API.Services
             };
         }
 
-        private double GetCalibrationFactor(string carKey, string calculationMethod)
+        public double GetCalibrationFactor(string carKey, string calculationMethod)
         {
             // Method-specific calibration factors
             return calculationMethod switch
@@ -223,7 +223,7 @@ namespace VirtualDyno.API.Services
             };
         }
 
-        private double GetMAFCalibrationFactor(string carKey)
+        public double GetMAFCalibrationFactor(string carKey)
         {
             // MAF-based calibration factors (our tested values)
             return carKey switch
@@ -238,7 +238,7 @@ namespace VirtualDyno.API.Services
             };
         }
 
-        private double GetMAPCalibrationFactor(string carKey)
+        public double GetMAPCalibrationFactor(string carKey)
         {
             // MAP-based calibration factors (tuned to match MAF accuracy)
             // MAP method tends to calculate slightly higher airflow, so we scale down
@@ -254,7 +254,7 @@ namespace VirtualDyno.API.Services
             };
         }
 
-        private double GetLoadCalibrationFactor(string carKey)
+        public double GetLoadCalibrationFactor(string carKey)
         {
             // Load-based calibration factors (refined)
             return carKey switch
@@ -274,54 +274,110 @@ namespace VirtualDyno.API.Services
             return rpm > 0 ? (horsepower * 5252) / rpm : 0;
         }
 
-        public List<DynoDataPoint> SmoothData(List<DynoDataPoint> data, int smoothingLevel)
+        public List<DynoDataPoint> SmoothDataPreservePeaks(List<DynoDataPoint> data, int smoothingLevel)
         {
-            // Level 0 = no smoothing (return original data)
-            // Level 1+ = progressive smoothing with gaussian-like weighting
             if (smoothingLevel <= 0 || !data.Any()) return data;
 
             var smoothedData = new List<DynoDataPoint>();
 
-            // Improved smoothing algorithm with gaussian-like weighting
+            // First, identify genuine peaks (not just noise spikes)
+            var hpPeaks = IdentifyGenuinePeaks(data.Select(d => d.Horsepower).ToList());
+            var tqPeaks = IdentifyGenuinePeaks(data.Select(d => d.Torque).ToList());
+            var boostPeaks = IdentifyGenuinePeaks(data.Select(d => d.Boost).ToList());
+
             for (int i = 0; i < data.Count; i++)
             {
-                var windowSize = Math.Min(smoothingLevel, 3); // Limit window size for better results
-                var start = Math.Max(0, i - windowSize);
-                var end = Math.Min(data.Count - 1, i + windowSize);
+                // Check if this point is a genuine peak
+                bool isHpPeak = hpPeaks.Contains(i);
+                bool isTqPeak = tqPeaks.Contains(i);
+                bool isBoostPeak = boostPeaks.Contains(i);
 
-                double totalWeight = 0;
-                double weightedHp = 0;
-                double weightedTq = 0;
-                double weightedBoost = 0;
-
-                for (int j = start; j <= end; j++)
+                if (isHpPeak || isTqPeak || isBoostPeak)
                 {
-                    // Gaussian-like weighting - center point gets more weight
-                    double distance = Math.Abs(i - j);
-                    double weight = Math.Exp(-distance * distance / (2.0 * smoothingLevel * smoothingLevel));
-
-                    weightedHp += data[j].Horsepower * weight;
-                    weightedTq += data[j].Torque * weight;
-                    weightedBoost += data[j].Boost * weight;
-                    totalWeight += weight;
+                    // PRESERVE PEAKS - don't smooth them!
+                    smoothedData.Add(new DynoDataPoint
+                    {
+                        DynoRunId = data[i].DynoRunId,
+                        Rpm = data[i].Rpm,
+                        // Keep original peak values
+                        Horsepower = isHpPeak ? data[i].Horsepower : SmoothSingleValue(data, i, d => d.Horsepower, smoothingLevel),
+                        Torque = isTqPeak ? data[i].Torque : SmoothSingleValue(data, i, d => d.Torque, smoothingLevel),
+                        Boost = isBoostPeak ? data[i].Boost : SmoothSingleValue(data, i, d => d.Boost, smoothingLevel),
+                        MassAirflow = data[i].MassAirflow,
+                        Load = data[i].Load,
+                        Timestamp = data[i].Timestamp
+                    });
                 }
-
-                var smoothedPoint = new DynoDataPoint
+                else
                 {
-                    DynoRunId = data[i].DynoRunId,
-                    Rpm = data[i].Rpm,
-                    Horsepower = Math.Round(weightedHp / totalWeight, 1),
-                    Torque = Math.Round(weightedTq / totalWeight, 1),
-                    Boost = Math.Round(weightedBoost / totalWeight, 1),
-                    MassAirflow = data[i].MassAirflow, // Don't smooth raw sensor data
-                    Load = data[i].Load,               // Don't smooth raw sensor data
-                    Timestamp = data[i].Timestamp
-                };
-
-                smoothedData.Add(smoothedPoint);
+                    // Smooth non-peak areas normally
+                    smoothedData.Add(new DynoDataPoint
+                    {
+                        DynoRunId = data[i].DynoRunId,
+                        Rpm = data[i].Rpm,
+                        Horsepower = SmoothSingleValue(data, i, d => d.Horsepower, smoothingLevel),
+                        Torque = SmoothSingleValue(data, i, d => d.Torque, smoothingLevel),
+                        Boost = SmoothSingleValue(data, i, d => d.Boost, smoothingLevel),
+                        MassAirflow = data[i].MassAirflow,
+                        Load = data[i].Load,
+                        Timestamp = data[i].Timestamp
+                    });
+                }
             }
 
             return smoothedData;
+        }
+
+        public List<int> IdentifyGenuinePeaks(List<double> values)
+        {
+            var peaks = new List<int>();
+
+            for (int i = 1; i < values.Count - 1; i++)
+            {
+                // Check if this is a genuine peak (not just noise)
+                var current = values[i];
+                var left = values[i - 1];
+                var right = values[i + 1];
+
+                // Must be higher than both neighbors by meaningful amount
+                if (current > left + 2 && current > right + 2)
+                {
+                    // Additional validation: check wider context
+                    var windowStart = Math.Max(0, i - 5);
+                    var windowEnd = Math.Min(values.Count - 1, i + 5);
+                    var windowMax = values.Skip(windowStart).Take(windowEnd - windowStart + 1).Max();
+
+                    // Only consider it a peak if it's the highest in the local area
+                    if (Math.Abs(current - windowMax) < 1.0)
+                    {
+                        peaks.Add(i);
+                    }
+                }
+            }
+
+            return peaks;
+        }
+
+        public double SmoothSingleValue(List<DynoDataPoint> data, int index, Func<DynoDataPoint, double> selector, int smoothingLevel)
+        {
+            // Reduced window size to prevent over-smoothing
+            var windowSize = Math.Min(smoothingLevel / 2, 2); // Much smaller window
+            var start = Math.Max(0, index - windowSize);
+            var end = Math.Min(data.Count - 1, index + windowSize);
+
+            double totalWeight = 0;
+            double weightedValue = 0;
+
+            for (int j = start; j <= end; j++)
+            {
+                double distance = Math.Abs(index - j);
+                double weight = Math.Exp(-distance * distance / (2.0 * smoothingLevel * smoothingLevel));
+
+                weightedValue += selector(data[j]) * weight;
+                totalWeight += weight;
+            }
+
+            return Math.Round(weightedValue / totalWeight, 1);
         }
 
         public PeakValues CalculatePeakValues(List<DynoDataPoint> data, int carWeight)

@@ -1,38 +1,269 @@
-import React, { useState, useRef } from 'react';
-import './VirtualDyno.css';
+import React, { useState, useRef, useEffect } from 'react';
 
-// Virtual Dyno Room that processes REAL user CSV files
 const VirtualDyno = () => {
   const [csvFile, setCsvFile] = useState(null);
   const [csvData, setCsvData] = useState([]);
   const [dynoResults, setDynoResults] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [currentDataPoint, setCurrentDataPoint] = useState(0);
-  const [selectedCar, setSelectedCar] = useState('mazdaspeed3');
-  const [virtualDynoSettings, setVirtualDynoSettings] = useState({
-    dynoType: 'mustang_md250',
-    temperature: 75,
-    humidity: 45,
-    altitude: 500
+  const [liveGraphData, setLiveGraphData] = useState([]);
+  const [currentPeaks, setCurrentPeaks] = useState({
+    maxHP: 0,
+    maxTorque: 0,
+    maxBoost: 0,
+    currentHP: 0,
+    currentTorque: 0,
+    currentBoost: 0
   });
-  const fileInputRef = useRef(null);
+  
+  // Dyno Settings State
+  const [dynoSettings, setDynoSettings] = useState({
+    selectedCar: 'mazdaspeed3',
+    gear: 4,
+    dynoType: 'mustang_md250',
+    weight: 3200,
+    temperature: 75,
+    humidity: 45
+  });
 
-  // Dyno characteristics (no heat soak)
+  // Post-run smoothing control
+  const [smoothingLevel, setSmoothingLevel] = useState(0);
+  const [smoothedData, setSmoothedData] = useState([]);
+  const [smoothedPeaks, setSmoothedPeaks] = useState(null);
+
+  const fileInputRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  // Car options
+  const carOptions = [
+    { value: 'mazdaspeed3', label: 'Mazdaspeed3' },
+    { value: 'wrx', label: 'Subaru WRX' },
+    { value: 'sti', label: 'Subaru STI' },
+    { value: 'evo', label: 'Mitsubishi Evo' },
+    { value: 'gti', label: 'VW Golf GTI' },
+    { value: 'focus_st', label: 'Ford Focus ST' }
+  ];
+
+  // Dyno types
   const dynoTypes = {
-    mustang_md250: {
-      name: "Mustang MD250 (Load Bearing)",
-      correction: 1.0,
-      variance: 0.02
-    },
-    dynojet_248c: {
-      name: "DynoJet 248C (Inertial)", 
-      correction: 1.15,
-      variance: 0.03
-    },
-    awd_dyno: {
-      name: "AWD Dyno (All-Wheel)",
-      correction: 0.95,
-      variance: 0.04
+    mustang_md250: { name: "Mustang MD250", correction: 1.0, variance: 0.02 },
+    dynojet_248c: { name: "DynoJet 248C", correction: 1.15, variance: 0.03 },
+    awd_dyno: { name: "AWD Dyno", correction: 0.95, variance: 0.04 }
+  };
+
+  // Smoothing options
+  const smoothingOptions = [
+    { value: 0, label: 'Raw Data (0)' },
+    { value: 1, label: 'Light (1)' },
+    { value: 2, label: 'Moderate (2)' },
+    { value: 3, label: 'Smooth (3)' },
+    { value: 4, label: 'Heavy (4)' },
+    { value: 5, label: 'Maximum (5)' }
+  ];
+
+  // Draw graph on canvas
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const dataToDisplay = smoothedData.length > 0 ? smoothedData : liveGraphData;
+    if (dataToDisplay.length === 0) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const { width, height } = canvas;
+
+    // Clear canvas
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
+
+    // Setup graph dimensions
+    const padding = 60;
+    const graphWidth = width - padding * 2;
+    const graphHeight = height - padding * 2;
+
+    // Find data ranges
+    const maxRpm = Math.max(...dataToDisplay.map(d => d.rpm), 7000);
+    const minRpm = Math.min(...dataToDisplay.map(d => d.rpm), 2000);
+    const maxHP = Math.max(...dataToDisplay.map(d => d.horsepower), 100);
+    const maxTorque = Math.max(...dataToDisplay.map(d => d.torque), 100);
+    const maxPower = Math.max(maxHP, maxTorque);
+
+    // Draw grid
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    
+    // Vertical grid lines (RPM)
+    for (let rpm = Math.ceil(minRpm / 500) * 500; rpm <= maxRpm; rpm += 500) {
+      const x = padding + ((rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, padding);
+      ctx.lineTo(x, height - padding);
+      ctx.stroke();
+      
+      // RPM labels
+      ctx.fillStyle = '#666';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(rpm.toString(), x, height - padding + 20);
+    }
+
+    // Horizontal grid lines (Power)
+    for (let power = 0; power <= maxPower; power += 50) {
+      const y = height - padding - (power / maxPower) * graphHeight;
+      ctx.beginPath();
+      ctx.moveTo(padding, y);
+      ctx.lineTo(width - padding, y);
+      ctx.stroke();
+      
+      // Power labels
+      ctx.fillStyle = '#666';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(power.toString(), padding - 10, y + 4);
+    }
+
+    // Draw axes
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, height - padding);
+    ctx.lineTo(width - padding, height - padding);
+    ctx.stroke();
+
+    // Draw HP line (red)
+    if (dataToDisplay.length > 1) {
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      
+      dataToDisplay.forEach((point, index) => {
+        const x = padding + ((point.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
+        const y = height - padding - (point.horsepower / maxPower) * graphHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+
+    // Draw Torque line (green)
+    if (dataToDisplay.length > 1) {
+      ctx.strokeStyle = '#44ff44';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      
+      dataToDisplay.forEach((point, index) => {
+        const x = padding + ((point.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
+        const y = height - padding - (point.torque / maxPower) * graphHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+
+    // Draw current point indicator (only during live run)
+    if (isRunning && liveGraphData.length > 0) {
+      const currentPoint = liveGraphData[liveGraphData.length - 1];
+      const x = padding + ((currentPoint.rpm - minRpm) / (maxRpm - minRpm)) * graphWidth;
+      const yHP = height - padding - (currentPoint.horsepower / maxPower) * graphHeight;
+      const yTQ = height - padding - (currentPoint.torque / maxPower) * graphHeight;
+      
+      // HP indicator
+      ctx.fillStyle = '#ff4444';
+      ctx.beginPath();
+      ctx.arc(x, yHP, 5, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Torque indicator
+      ctx.fillStyle = '#44ff44';
+      ctx.beginPath();
+      ctx.arc(x, yTQ, 5, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    // Draw legend
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('■ Horsepower', width - 200, 30);
+    
+    ctx.fillStyle = '#44ff44';
+    ctx.fillText('■ Torque', width - 200, 50);
+
+    // Axis labels
+    ctx.fillStyle = '#ccc';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('RPM', width / 2, height - 10);
+    
+    ctx.save();
+    ctx.translate(20, height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('HP / TQ', 0, 0);
+    ctx.restore();
+
+  }, [liveGraphData, smoothedData, isRunning]);
+
+  // Handle smoothing change
+  const handleSmoothingChange = async (newLevel) => {
+    if (!dynoResults || !dynoResults.processedData) return;
+    
+    setSmoothingLevel(newLevel);
+    
+    let dataToProcess;
+    
+    if (newLevel === 0) {
+      // Raw data
+      dataToProcess = dynoResults.processedData.map(d => ({
+        rpm: d.rpm,
+        horsepower: Math.round(d.hp),
+        torque: Math.round(d.torque),
+        boost: Math.round(d.boost * 10) / 10
+      }));
+      setSmoothedData(dataToProcess);
+    } else {
+      // Apply smoothing via backend
+      try {
+        const response = await fetch(`http://localhost:5038/api/dyno/runs/${dynoResults.backendResults.id}/smooth/${newLevel}`);
+        if (response.ok) {
+          const smoothed = await response.json();
+          dataToProcess = smoothed.map(d => ({
+            rpm: d.rpm,
+            horsepower: Math.round(d.horsepower),
+            torque: Math.round(d.torque),
+            boost: Math.round(d.boost * 10) / 10
+          }));
+          setSmoothedData(dataToProcess);
+        }
+      } catch (error) {
+        console.error('Error applying smoothing:', error);
+        return;
+      }
+    }
+    
+    // Calculate new peaks from smoothed data
+    if (dataToProcess && dataToProcess.length > 0) {
+      const maxHP = Math.max(...dataToProcess.map(d => d.horsepower));
+      const maxTorque = Math.max(...dataToProcess.map(d => d.torque));
+      const maxBoost = Math.max(...dataToProcess.map(d => d.boost));
+      const maxHPPoint = dataToProcess.find(d => d.horsepower === maxHP);
+      const maxTorquePoint = dataToProcess.find(d => d.torque === maxTorque);
+      
+      setSmoothedPeaks({
+        maxHP,
+        maxTorque,
+        maxBoost,
+        maxHPRpm: maxHPPoint?.rpm || 0,
+        maxTorqueRpm: maxTorquePoint?.rpm || 0
+      });
     }
   };
 
@@ -42,6 +273,9 @@ const VirtualDyno = () => {
     if (!file) return;
     
     setCsvFile(file);
+    setDynoResults(null);
+    setLiveGraphData([]);
+    setSmoothedData([]);
     
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -60,7 +294,6 @@ const VirtualDyno = () => {
           return row;
         })
         .filter(row => {
-          // Filter for valid dyno data (like your C# backend does)
           const rpm = parseInt(row['RPM (RPM)'] || row['RPM'] || row['Engine Speed']);
           const maf = parseFloat(row['Mass Airflow (g/s)'] || row['MAF'] || row['Mass Airflow']);
           const load = parseFloat(row['Calculated Load (Load)'] || row['Load'] || row['Engine Load']);
@@ -75,17 +308,17 @@ const VirtualDyno = () => {
     reader.readAsText(file);
   };
 
-  // Send to your C# backend and return results
+  // Send to C# backend
   const sendToBackend = async () => {
     if (!csvFile) return null;
     
     try {
       const formData = new FormData();
       formData.append('File', csvFile);
-      formData.append('CarPresetKey', selectedCar);
-      formData.append('Weight', '3200');
-      formData.append('Gear', '4');
-      formData.append('Notes', `Virtual dyno: ${virtualDynoSettings.dynoType}, ${virtualDynoSettings.temperature}°F`);
+      formData.append('CarPresetKey', dynoSettings.selectedCar);
+      formData.append('Weight', dynoSettings.weight.toString());
+      formData.append('Gear', dynoSettings.gear.toString());
+      formData.append('Notes', `${dynoSettings.dynoType}, ${dynoSettings.temperature}°F`);
       formData.append('IsPublic', 'false');
       
       console.log('Sending CSV to C# backend...');
@@ -97,13 +330,9 @@ const VirtualDyno = () => {
       if (response.ok) {
         const backendResults = await response.json();
         console.log('✅ C# Backend Results:', backendResults);
-        console.log('Backend peaks:', backendResults.peaks);
-        console.log('Backend dataPointCount:', backendResults.dataPointCount);
         return backendResults;
       } else {
         console.error('Backend API error:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
         return null;
       }
     } catch (error) {
@@ -112,7 +341,7 @@ const VirtualDyno = () => {
     }
   };
 
-  // Run virtual dyno using YOUR C# backend for calculations
+  // Run virtual dyno
   const runVirtualDyno = async () => {
     if (!csvData.length) {
       alert('Please upload a CSV file first!');
@@ -121,9 +350,19 @@ const VirtualDyno = () => {
     
     setIsRunning(true);
     setCurrentDataPoint(0);
+    setLiveGraphData([]);
+    setSmoothedData([]);
+    setCurrentPeaks({
+      maxHP: 0,
+      maxTorque: 0,
+      maxBoost: 0,
+      currentHP: 0,
+      currentTorque: 0,
+      currentBoost: 0
+    });
     
     try {
-      // 1. Send real CSV to YOUR C# backend for processing
+      // Get backend results
       const backendResults = await sendToBackend();
       
       if (!backendResults) {
@@ -132,9 +371,7 @@ const VirtualDyno = () => {
         return;
       }
       
-      console.log('Backend response structure:', backendResults);
-      
-      // 2. Get the official datapoints from YOUR backend
+      // Get detailed data points
       const detailResponse = await fetch(`http://localhost:5038/api/dyno/runs/${backendResults.id}`);
       
       if (!detailResponse.ok) {
@@ -144,28 +381,15 @@ const VirtualDyno = () => {
       }
       
       const detailData = await detailResponse.json();
-      console.log('🔍 Detail data structure:', detailData);
-      console.log('🔍 First data point:', detailData.dataPoints?.[0]);
-      console.log('🔍 Data point properties:', Object.keys(detailData.dataPoints?.[0] || {}));
       
-      // 3. Apply virtual dyno characteristics to YOUR calculated results
+      // Process data with virtual dyno characteristics
       const processedData = (detailData.dataPoints || []).map((point, index) => {
-        // Debug logging for first few points
-        if (index < 3) {
-          console.log(`🔍 Point ${index}:`, point);
-          console.log(`🔍 Available properties:`, Object.keys(point));
-          console.log(`🔍 MAF check: massAirflow=${point.massAirflow}, MassAirflow=${point.MassAirflow}`);
-          console.log(`🔍 Boost check: boost=${point.boost}, Boost=${point.Boost}`);
-        }
-        
-        // Use YOUR backend's calculations as base, apply dyno characteristics
-        const dyno = dynoTypes[virtualDynoSettings.dynoType];
+        const dyno = dynoTypes[dynoSettings.dynoType];
         
         // Environmental effects
-        const tempCorrection = Math.sqrt(537.67 / (virtualDynoSettings.temperature + 459.67));
-        const humidityCorrection = 1 - (virtualDynoSettings.humidity / 100 * 0.047);
-        const altitudeCorrection = 1 - (virtualDynoSettings.altitude * 0.000035);
-        const envCorrection = tempCorrection * humidityCorrection * altitudeCorrection;
+        const tempCorrection = Math.sqrt(537.67 / (dynoSettings.temperature + 459.67));
+        const humidityCorrection = 1 - (dynoSettings.humidity / 100 * 0.047);
+        const envCorrection = tempCorrection * humidityCorrection;
         
         // Dyno type correction and variance
         const variance = 1 + (Math.random() - 0.5) * 2 * dyno.variance;
@@ -182,28 +406,59 @@ const VirtualDyno = () => {
         };
       });
       
-      // 4. Animate the virtual dyno run
+      // Sort by RPM for proper graph progression
+      processedData.sort((a, b) => a.rpm - b.rpm);
+      
+      // Animate the dyno run with live graph updates
       for (let i = 0; i < processedData.length; i++) {
+        const currentPoint = processedData[i];
+        
+        // Update live graph data (add current point)
+        setLiveGraphData(prev => {
+          const newData = [...prev, {
+            rpm: currentPoint.rpm,
+            horsepower: Math.round(currentPoint.hp),
+            torque: Math.round(currentPoint.torque),
+            boost: Math.round(currentPoint.boost * 10) / 10
+          }];
+          
+          return newData.sort((a, b) => a.rpm - b.rpm);
+        });
+        
+        // Update current peaks and live readings
+        setCurrentPeaks(prev => {
+          const maxHP = Math.max(prev.maxHP, currentPoint.hp);
+          const maxTorque = Math.max(prev.maxTorque, currentPoint.torque);
+          const maxBoost = Math.max(prev.maxBoost, currentPoint.boost);
+          
+          return {
+            maxHP: Math.round(maxHP),
+            maxTorque: Math.round(maxTorque),
+            maxBoost: Math.round(maxBoost * 10) / 10,
+            currentHP: Math.round(currentPoint.hp),
+            currentTorque: Math.round(currentPoint.torque),
+            currentBoost: Math.round(currentPoint.boost * 10) / 10
+          };
+        });
+        
         setCurrentDataPoint(i);
-        // Show current point during animation
-        if (i < processedData.length) {
-          setDynoResults(prev => ({
-            ...prev,
-            currentPoint: processedData[i]
-          }));
-        }
-        await new Promise(resolve => setTimeout(resolve, 150));
+        
+        // Vary the delay based on RPM
+        const delay = currentPoint.rpm < 3000 ? 200 : 
+                     currentPoint.rpm < 4000 ? 150 : 
+                     currentPoint.rpm < 5000 ? 120 : 100;
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
       
-      // 5. Calculate final peaks from virtual dyno
+      // Calculate final peaks
       const peaks = {
-        maxHP: processedData.length > 0 ? Math.max(...processedData.map(d => d.hp || 0)) : 0,
-        maxTorque: processedData.length > 0 ? Math.max(...processedData.map(d => d.torque || 0)) : 0,
+        maxHP: processedData.length > 0 ? Math.round(Math.max(...processedData.map(d => d.hp || 0))) : 0,
+        maxTorque: processedData.length > 0 ? Math.round(Math.max(...processedData.map(d => d.torque || 0))) : 0,
         maxHPRpm: processedData.find(d => d.hp === Math.max(...processedData.map(p => p.hp || 0)))?.rpm || 0,
         maxTorqueRpm: processedData.find(d => d.torque === Math.max(...processedData.map(p => p.torque || 0)))?.rpm || 0,
-        // Also include YOUR backend's original peaks for comparison
-        backendMaxHP: backendResults.peaks?.maxHorsepower || 0,
-        backendMaxTorque: backendResults.peaks?.maxTorque || 0,
+        backendMaxHP: Math.round(backendResults.peaks?.maxHorsepower || 0),
+        backendMaxTorque: Math.round(backendResults.peaks?.maxTorque || 0),
         backendMaxHPRpm: backendResults.peaks?.maxHorsepowerRpm || 0,
         backendMaxTorqueRpm: backendResults.peaks?.maxTorqueRpm || 0
       };
@@ -211,10 +466,14 @@ const VirtualDyno = () => {
       setDynoResults({
         processedData,
         peaks,
-        settings: virtualDynoSettings,
+        settings: dynoSettings,
         fileName: csvFile.name,
-        backendResults // Store original backend results
+        backendResults
       });
+      
+      // Set initial smoothing level to 0 (raw data)
+      setSmoothingLevel(0);
+      handleSmoothingChange(0);
       
     } catch (error) {
       console.error('Error running virtual dyno:', error);
@@ -224,211 +483,462 @@ const VirtualDyno = () => {
     }
   };
 
-  // Reset dyno results
+  // Reset dyno
   const resetDyno = () => {
     setDynoResults(null);
     setCurrentDataPoint(0);
+    setLiveGraphData([]);
+    setSmoothedData([]);
+    setSmoothedPeaks(null);
+    setSmoothingLevel(0);
+    setCurrentPeaks({
+      maxHP: 0,
+      maxTorque: 0,
+      maxBoost: 0,
+      currentHP: 0,
+      currentTorque: 0,
+      currentBoost: 0
+    });
   };
 
-  const currentData = dynoResults?.currentPoint || (dynoResults?.processedData && dynoResults.processedData[currentDataPoint]);
+  const inputStyle = {
+    width: '100%',
+    padding: '8px 12px',
+    border: '1px solid #4a5568',
+    borderRadius: '4px',
+    fontSize: '14px',
+    backgroundColor: '#2d3748',
+    color: '#e2e8f0'
+  };
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#e2e8f0',
+    marginBottom: '6px'
+  };
+
+  const sectionStyle = {
+    marginBottom: '20px',
+    padding: '15px',
+    backgroundColor: '#2d3748',
+    borderRadius: '6px',
+    border: '1px solid #4a5568'
+  };
 
   return (
-    <div className="virtual-dyno-container">
-      <h1 className="virtual-dyno-title">🏁 Virtual Dyno Experience - Powered by Your C# Backend</h1>
-      
-      <div className="backend-status-alert">
-        <strong>⚙️ Make sure your C# backend is running:</strong> <code>cd VirtualDyno.API && dotnet run</code>
+    <div style={{ 
+      minHeight: '100vh',
+      backgroundColor: '#0f1419',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      {/* Header */}
+      <div style={{
+        backgroundColor: '#1a2332',
+        color: 'white',
+        padding: '20px 0',
+        textAlign: 'center',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+        borderBottom: '1px solid #2d3748'
+      }}>
+        <h1 style={{ 
+          margin: 0, 
+          fontSize: '28px', 
+          fontWeight: '700',
+          letterSpacing: '-0.5px',
+          background: 'linear-gradient(135deg, #ff4444, #44ff44, #4488ff)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text'
+        }}>
+          🏁 Virtual Dyno Pro
+        </h1>
+        <p style={{ 
+          margin: '8px 0 0 0', 
+          fontSize: '16px', 
+          opacity: 0.8,
+          fontWeight: '400',
+          color: '#a0aec0'
+        }}>
+          Professional Dyno Analysis & Simulation
+        </p>
       </div>
-      
-      <div className="dyno-main-grid">
+
+      {/* Main Content */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '380px 1fr',
+        height: 'calc(100vh - 180px)',
+        gap: '0'
+      }}>
         
-        {/* File Upload */}
-        <div className={`file-upload-section ${csvFile ? 'has-file' : ''}`}>
-          <h3 className="file-upload-title">📁 Upload Your Datalog</h3>
-          <input 
-            type="file" 
-            accept=".csv"
-            onChange={handleFileUpload}
-            ref={fileInputRef}
-            className="hidden"
-          />
+        {/* Left Panel - Settings */}
+        <div style={{
+          backgroundColor: '#1a202c',
+          borderRight: '1px solid #2d3748',
+          padding: '24px',
+          overflowY: 'auto'
+        }}>
+          
+          {/* File Upload Section */}
+          <div style={sectionStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <label style={{ ...labelStyle, margin: 0, flex: 1 }}>📁 Upload Datalog</label>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: csvFile ? '#38a169' : '#3182ce',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = csvFile ? '#2f855a' : '#2c5282'}
+                onMouseOut={(e) => e.target.style.backgroundColor = csvFile ? '#38a169' : '#3182ce'}
+              >
+                {csvFile ? '✅ Change' : '📂 Select'}
+              </button>
+              <input 
+                type="file" 
+                accept=".csv"
+                onChange={handleFileUpload}
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+              />
+            </div>
+            
+            {csvFile && (
+              <div style={{
+                fontSize: '13px',
+                color: '#a0aec0',
+                backgroundColor: '#2d3748',
+                padding: '8px',
+                borderRadius: '4px',
+                border: '1px solid #4a5568',
+                wordBreak: 'break-all'
+              }}>
+                📄 {csvFile.name}
+              </div>
+            )}
+          </div>
+
+          {/* Vehicle Settings */}
+          <div style={sectionStyle}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#68d391' }}>🚗 Vehicle Setup</h3>
+            
+            {/* Car Selection */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <label style={{ ...labelStyle, margin: 0, minWidth: '80px' }}>Car:</label>
+              <select 
+                value={dynoSettings.selectedCar}
+                onChange={(e) => setDynoSettings(prev => ({ ...prev, selectedCar: e.target.value }))}
+                style={{ ...inputStyle, flex: 1 }}
+              >
+                {carOptions.map(car => (
+                  <option key={car.value} value={car.value}>{car.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Gear Selection */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>Gear Used:</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[3, 4, 5].map(gear => (
+                  <button
+                    key={gear}
+                    onClick={() => setDynoSettings(prev => ({ ...prev, gear }))}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: dynoSettings.gear === gear ? '2px solid #3182ce' : '1px solid #4a5568',
+                      borderRadius: '4px',
+                      backgroundColor: dynoSettings.gear === gear ? '#2c5282' : '#2d3748',
+                      color: dynoSettings.gear === gear ? 'white' : '#a0aec0',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: dynoSettings.gear === gear ? '600' : '400',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {gear}rd
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Weight */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>Vehicle Weight (lbs):</label>
+              <input
+                type="number"
+                value={dynoSettings.weight}
+                onChange={(e) => setDynoSettings(prev => ({ ...prev, weight: parseInt(e.target.value) || 0 }))}
+                style={inputStyle}
+                min="1000"
+                max="10000"
+                step="50"
+              />
+            </div>
+          </div>
+
+          {/* Dyno Settings */}
+          <div style={sectionStyle}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#68d391' }}>⚙️ Dyno Configuration</h3>
+            
+            {/* Dyno Type */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <label style={{ ...labelStyle, margin: 0, minWidth: '80px' }}>Type:</label>
+              <select 
+                value={dynoSettings.dynoType}
+                onChange={(e) => setDynoSettings(prev => ({ ...prev, dynoType: e.target.value }))}
+                style={{ ...inputStyle, flex: 1 }}
+              >
+                {Object.entries(dynoTypes).map(([key, dyno]) => (
+                  <option key={key} value={key}>{dyno.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Environmental Settings */}
+          <div style={sectionStyle}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#68d391' }}>🌡️ Environmental</h3>
+            
+            {/* Temperature */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>Temperature: {dynoSettings.temperature}°F</label>
+              <input 
+                type="range" 
+                min="50" 
+                max="110" 
+                value={dynoSettings.temperature}
+                onChange={(e) => setDynoSettings(prev => ({ ...prev, temperature: parseInt(e.target.value) }))}
+                style={{ width: '100%', margin: '4px 0' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#718096' }}>
+                <span>50°F</span><span>110°F</span>
+              </div>
+            </div>
+
+            {/* Humidity */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>Humidity: {dynoSettings.humidity}%</label>
+              <input 
+                type="range" 
+                min="10" 
+                max="90" 
+                value={dynoSettings.humidity}
+                onChange={(e) => setDynoSettings(prev => ({ ...prev, humidity: parseInt(e.target.value) }))}
+                style={{ width: '100%', margin: '4px 0' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#718096' }}>
+                <span>10%</span><span>90%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Run Button */}
           <button 
-            onClick={() => fileInputRef.current.click()}
-            className="file-upload-button"
-          >
-            {csvFile ? '✅ Change File' : '📂 Select CSV File'}
-          </button>
-          
-          {csvFile && (
-            <div className="file-info">
-              <p><strong>File:</strong> {csvFile.name}</p>
-              <p><strong>Data Points:</strong> {csvData.length}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Virtual Dyno Settings */}
-        <div className="settings-panel">
-          <h3 className="settings-title">🚗 Vehicle Selection</h3>
-          
-          <label className="settings-label">Select Car:</label>
-          <select 
-            value={selectedCar}
-            onChange={(e) => {
-              setSelectedCar(e.target.value);
-              setDynoResults(null); // Clear previous results
-              resetDyno(); // Reset session
+            onClick={runVirtualDyno}
+            disabled={!csvData.length || isRunning}
+            style={{
+              width: '100%',
+              padding: '16px',
+              backgroundColor: isRunning ? '#4a5568' : '#e53e3e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '16px',
+              fontWeight: '700',
+              cursor: isRunning ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
             }}
-            className="settings-select"
           >
-            <option value="mazdaspeed3">Mazdaspeed3</option>
-            <option value="wrx">Subaru WRX</option>
-            <option value="gti">VW GTI</option>
-            <option value="focus_st">Ford Focus ST</option>
-          </select>
-
-          <h3 className="settings-title">🔧 Dyno Settings</h3>
-          
-          <label className="settings-label">Dyno Type:</label>
-          <select 
-            value={virtualDynoSettings.dynoType}
-            onChange={(e) => setVirtualDynoSettings(prev => ({
-              ...prev, dynoType: e.target.value
-            }))}
-            className="settings-select"
-          >
-            {Object.entries(dynoTypes).map(([key, dyno]) => (
-              <option key={key} value={key}>{dyno.name}</option>
-            ))}
-          </select>
-          
-          <label className="settings-label">Temperature: {virtualDynoSettings.temperature}°F</label>
-          <input 
-            type="range" 
-            min="50" 
-            max="110" 
-            value={virtualDynoSettings.temperature}
-            onChange={(e) => setVirtualDynoSettings(prev => ({
-              ...prev, temperature: parseInt(e.target.value)
-            }))}
-            className="settings-range"
-          />
-          
-          <label className="settings-label">Humidity: {virtualDynoSettings.humidity}%</label>
-          <input 
-            type="range" 
-            min="10" 
-            max="90" 
-            value={virtualDynoSettings.humidity}
-            onChange={(e) => setVirtualDynoSettings(prev => ({
-              ...prev, humidity: parseInt(e.target.value)
-            }))}
-            className="settings-range"
-          />
-          
-          <p className="settings-info"><strong>Selected Car:</strong> {selectedCar}</p>
-          <p className="settings-info"><strong>Dyno Correction:</strong> {dynoTypes[virtualDynoSettings.dynoType].correction}x</p>
+            {isRunning ? '🏃 PROCESSING...' : '🚀 START VIRTUAL DYNO'}
+          </button>
         </div>
 
-        {/* Live Dyno Display */}
-        <div className={`dyno-display-panel ${isRunning ? 'running' : ''}`}>
-          <h3 className="dyno-display-title">{isRunning ? 'PROCESSING...' : 'Virtual Dyno'}</h3>
+        {/* Right Panel - Graph */}
+        <div style={{
+          backgroundColor: '#1a202c',
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative'
+        }}>
           
-          {isRunning && currentData && (
-            <div className="live-dyno-reading">
-              <div className="live-rpm">
-                {currentData.rpm || 0} RPM
-              </div>
-              <div className="live-power">
-                {(currentData.hp || 0).toFixed(1)} HP | {(currentData.torque || 0).toFixed(1)} lb-ft
-              </div>
-              <div className="live-details">
-                Boost: {(currentData.boost || 0).toFixed(1)} PSI | MAF: {(currentData.maf || 0).toFixed(1)} g/s
-              </div>
-              <div className="progress-bar-container">
-                <div className="progress-bar" style={{ 
-                  width: `${csvData.length > 0 ? (currentDataPoint / csvData.length) * 100 : 0}%`
-                }}></div>
-              </div>
-            </div>
-          )}
-          
-          {dynoResults && !isRunning && (
-            <div className="results-display">
-              <h4 className="results-title">🏆 Virtual Dyno Results</h4>
-              <div className="virtual-results">
-                <p><strong>{(dynoResults.peaks?.maxHP || 0).toFixed(1)} HP</strong> @ {dynoResults.peaks?.maxHPRpm || 'N/A'} RPM</p>
-                <p><strong>{(dynoResults.peaks?.maxTorque || 0).toFixed(1)} lb-ft</strong> @ {dynoResults.peaks?.maxTorqueRpm || 'N/A'} RPM</p>
-                <p className="results-meta">
-                  Dyno: {dynoTypes[dynoResults.settings?.dynoType]?.name || 'Unknown'}<br/>
-                  Temp: {dynoResults.settings?.temperature || 'N/A'}°F, Humidity: {dynoResults.settings?.humidity || 'N/A'}%<br/>
-                  Altitude: {dynoResults.settings?.altitude || 'N/A'}ft
-                </p>
-              </div>
-              
-              {dynoResults.peaks?.backendMaxHP && (
-                <div className="backend-results">
-                  <strong>🧮 Your C# Backend Results:</strong><br/>
-                  {(dynoResults.peaks.backendMaxHP || 0).toFixed(1)} HP @ {dynoResults.peaks?.backendMaxHPRpm || 'N/A'} RPM<br/>
-                  {(dynoResults.peaks.backendMaxTorque || 0).toFixed(1)} lb-ft @ {dynoResults.peaks?.backendMaxTorqueRpm || 'N/A'} RPM<br/>
-                  <em>(Before virtual dyno effects)</em>
+          {/* Stats Cards or Placeholder */}
+          {(isRunning || dynoResults) ? (
+            <div>
+              {/* Smoothing Control - Only show after run */}
+              {dynoResults && !isRunning && (
+                <div style={{
+                  position: 'absolute',
+                  top: '30px',
+                  right: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: '#2d3748',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #4a5568',
+                  zIndex: 10
+                }}>
+                  <label style={{ fontSize: '12px', color: '#a0aec0', fontWeight: '500' }}>
+                    Smoothing:
+                  </label>
+                  <select
+                    value={smoothingLevel}
+                    onChange={(e) => handleSmoothingChange(parseInt(e.target.value))}
+                    style={{
+                      padding: '4px 8px',
+                      border: '1px solid #4a5568',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      backgroundColor: '#1a202c',
+                      color: '#e2e8f0'
+                    }}
+                  >
+                    {smoothingOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
+
+              {/* Peak Stats Card */}
+              <div style={{
+                backgroundColor: '#1a1a1a',
+                color: 'white',
+                padding: '20px',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: '20px',
+                textAlign: 'center'
+              }}>
+                <div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ff4444' }}>
+                    {isRunning ? currentPeaks.currentHP : (smoothedPeaks ? smoothedPeaks.maxHP : (dynoResults?.peaks?.maxHP || 0))}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>
+                    {isRunning ? 'CURRENT' : 'PEAK'} HP
+                  </div>
+                  {!isRunning && (dynoResults || smoothedPeaks) && (
+                    <div style={{ fontSize: '10px', color: '#888' }}>
+                      @ {smoothedPeaks ? smoothedPeaks.maxHPRpm : (dynoResults?.peaks?.maxHPRpm || 0)} RPM
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#44ff44' }}>
+                    {isRunning ? currentPeaks.currentTorque : (smoothedPeaks ? smoothedPeaks.maxTorque : (dynoResults?.peaks?.maxTorque || 0))}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>
+                    {isRunning ? 'CURRENT' : 'PEAK'} LB-FT
+                  </div>
+                  {!isRunning && (dynoResults || smoothedPeaks) && (
+                    <div style={{ fontSize: '10px', color: '#888' }}>
+                      @ {smoothedPeaks ? smoothedPeaks.maxTorqueRpm : (dynoResults?.peaks?.maxTorqueRpm || 0)} RPM
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#4488ff' }}>
+                    {isRunning ? currentPeaks.maxBoost : (smoothedPeaks ? smoothedPeaks.maxBoost : (Math.max(...(liveGraphData.map(d => d.boost) || [0])) || (smoothedData.length > 0 ? Math.max(...smoothedData.map(d => d.boost)) : 0)))}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#ccc', marginBottom: '4px' }}>
+                    PEAK BOOST PSI
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#888' }}>
+                    {isRunning ? 'LIVE' : 'RECORDED'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Canvas Graph */}
+              <div style={{ flex: 1, minHeight: '350px', maxHeight: '400px', position: 'relative' }}>
+                <canvas
+                  ref={canvasRef}
+                  width={700}
+                  height={350}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: '1px solid #4a5568',
+                    borderRadius: '6px',
+                    backgroundColor: '#1a1a1a'
+                  }}
+                />
+                
+                {/* Save Dyno Button - Only show after completion */}
+                {dynoResults && !isRunning && (
+                  <button 
+                    onClick={() => {
+                      // TODO: Implement save functionality
+                      alert('Save functionality will be implemented soon!');
+                    }}
+                    style={{
+                      position: 'absolute',
+                      bottom: '20px',
+                      right: '20px',
+                      padding: '10px 16px',
+                      backgroundColor: '#38a169',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 8px rgba(56, 161, 105, 0.3)',
+                      zIndex: 10
+                    }}
+                    onMouseOver={(e) => e.target.style.backgroundColor = '#2f855a'}
+                    onMouseOut={(e) => e.target.style.backgroundColor = '#38a169'}
+                  >
+                    💾 Save Dyno
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#2d3748',
+              borderRadius: '8px',
+              border: '2px dashed #4a5568',
+              minHeight: '350px',
+              maxHeight: '400px'
+            }}>
+              <div style={{
+                textAlign: 'center',
+                color: '#a0aec0'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#68d391' }}>Ready for Dyno Run</h3>
+                <p style={{ margin: 0, fontSize: '14px' }}>
+                  Upload a datalog file and configure your settings to begin
+                </p>
+              </div>
             </div>
           )}
-
-          {!isRunning && !dynoResults && csvData.length > 0 && (
-            <div className="status-ready">
-              <p><strong>Ready to Run!</strong></p>
-              <p>CSV loaded with {csvData.length} data points</p>
-              <p>Click "START VIRTUAL DYNO" to process with your C# backend</p>
-            </div>
-          )}
-          
-          {!isRunning && !dynoResults && csvData.length === 0 && (
-            <div className="status-waiting">
-              <p>Upload a CSV file to get started</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Control Buttons */}
-      <div className="controls-section">
-        <button 
-          onClick={runVirtualDyno}
-          disabled={!csvData.length || isRunning}
-          className="btn-primary"
-        >
-          {isRunning ? '🏃 PROCESSING...' : `🚀 START VIRTUAL DYNO`}
-        </button>
-        
-        {dynoResults && !isRunning && (
-          <button 
-            onClick={resetDyno}
-            className="btn-tertiary"
-          >
-            🔄 Reset
-          </button>
-        )}
-      </div>
-
-      {/* Instructions */}
-      <div className="instructions-panel">
-        <h4 className="instructions-title">🎮 How to Use Your Virtual Dyno:</h4>
-        <ol className="instructions-list">
-          <li><strong>Upload your real CSV datalog</strong> (AccessPort, Cobb, MHD, etc.)</li>
-          <li><strong>Choose dyno type</strong> - Different dynos read differently</li>
-          <li><strong>Set environmental conditions</strong> - Hot weather = less power</li>
-          <li><strong>Watch your data process through the virtual dyno</strong> - Real-time simulation</li>
-          <li><strong>Compare results</strong> - See how different dynos would read your run</li>
-        </ol>
-        
-        <p><strong>🎯 This uses YOUR C# backend calculations</strong> with virtual dyno simulation!</p>
-        
-        <div className="tech-flow">
-          <strong>🔧 Technical Flow:</strong><br/>
-          1. Upload real CSV → 2. Send to C# backend → 3. Get your calculations → 4. Apply virtual dyno effects → 5. Immersive experience
         </div>
       </div>
     </div>

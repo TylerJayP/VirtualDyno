@@ -1,381 +1,372 @@
 /* VirtualDyno.css - Clean styling for Virtual Dyno Experience */
 
-/* Main Container */
-.virtual-dyno-container {
-  padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+/* Main Application Container */
+.virtual-dyno-app {
+  min-height: 100vh;
+  background-color: #0f1419;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header Styles */
+.virtual-dyno-header {
+  background-color: #1a2332;
+  color: white;
+  padding: 20px 0;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  border-bottom: 1px solid #2d3748;
 }
 
 .virtual-dyno-title {
-  text-align: center;
-  color: #333;
-  margin-bottom: 10px;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #ff4444, #44ff44, #4488ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-/* Backend Status Alert */
-.backend-status-alert {
-  background-color: #d4edda;
-  border: 1px solid #c3e6cb;
-  padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 20px;
-  text-align: center;
+.virtual-dyno-subtitle {
+  margin: 8px 0 0 0;
+  font-size: 16px;
+  opacity: 0.8;
+  font-weight: 400;
+  color: #a0aec0;
 }
 
-.backend-status-alert code {
-  background-color: #f8f9fa;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
-}
-
-/* Main Grid Layout */
-.dyno-main-grid {
+/* Main Layout Grid */
+.virtual-dyno-main-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: 380px 1fr;
+  height: calc(100vh - 180px);
+  gap: 0;
+}
+
+/* Left Panel - Settings */
+.virtual-dyno-left-panel {
+  background-color: #1a202c;
+  border-right: 1px solid #2d3748;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* Settings Section Styles */
+.settings-section {
   margin-bottom: 20px;
+  padding: 15px;
+  background-color: #2d3748;
+  border-radius: 6px;
+  border: 1px solid #4a5568;
 }
 
-/* File Upload Section */
-.file-upload-section {
-  border: 2px dashed #007bff;
-  padding: 20px;
-  border-radius: 8px;
-  text-align: center;
-  background-color: #f8f9ff;
+.settings-section-title {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #68d391;
 }
 
-.file-upload-section.has-file {
-  background-color: #e8f5e8;
-  border-color: #28a745;
+/* Form Input Styles */
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #2d3748;
+  color: #e2e8f0;
 }
 
-.file-upload-title {
-  margin-bottom: 15px;
-  color: #333;
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 6px;
+}
+
+.form-label-inline {
+  margin: 0;
+  min-width: 80px;
+}
+
+/* File Upload Styles */
+.file-upload-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .file-upload-button {
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
+  padding: 8px 16px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.2s;
-}
-
-.file-upload-button:hover {
-  background-color: #0056b3;
-}
-
-.file-info {
-  margin-top: 10px;
   font-size: 14px;
-  color: #666;
-}
-
-/* Settings Panel */
-.settings-panel {
-  border: 1px solid #ddd;
-  padding: 15px;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-}
-
-.settings-title {
-  margin-bottom: 15px;
-  color: #333;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 5px;
-}
-
-.settings-label {
-  display: block;
-  margin-bottom: 5px;
   font-weight: 500;
-  color: #555;
-}
-
-.settings-select,
-.settings-range {
-  width: 100%;
-  margin: 5px 0 15px 0;
-  padding: 5px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-}
-
-.settings-info {
-  margin: 5px 0;
-  font-size: 14px;
-  color: #666;
-}
-
-/* Dyno Display Panel */
-.dyno-display-panel {
-  border: 2px solid #28a745;
-  padding: 15px;
-  border-radius: 8px;
-  background-color: #f8fff8;
-}
-
-.dyno-display-panel.running {
-  background-color: #fff3cd;
-  border-color: #ffc107;
-}
-
-.dyno-display-title {
-  margin-bottom: 15px;
-  color: #333;
-}
-
-/* Live Dyno Reading */
-.live-dyno-reading {
-  background-color: #ffeb3b;
-  padding: 10px;
-  border-radius: 5px;
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-.live-rpm {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.live-power {
-  font-size: 18px;
-  margin-bottom: 5px;
-}
-
-.live-details {
-  font-size: 14px;
-  margin-bottom: 10px;
-  color: #666;
-}
-
-/* Progress Bar */
-.progress-bar-container {
-  width: 100%;
-  height: 10px;
-  background-color: #ddd;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.progress-bar {
-  height: 100%;
-  background-color: #28a745;
-  border-radius: 5px;
-  transition: width 0.1s ease;
-}
-
-/* Results Display */
-.results-display {
-  text-align: center;
-}
-
-.results-title {
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.virtual-results {
-  background-color: #e8f5e8;
-  padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 10px;
-}
-
-.virtual-results p {
-  margin: 5px 0;
-}
-
-.results-meta {
-  font-size: 12px;
-  color: #666;
-  line-height: 1.4;
-}
-
-.backend-results {
-  background-color: #e3f2fd;
-  padding: 8px;
-  border-radius: 5px;
-  font-size: 12px;
-  margin-top: 10px;
-}
-
-.backend-results em {
-  color: #666;
-}
-
-/* Status Messages */
-.status-ready {
-  background-color: #f8f9fa;
-  padding: 10px;
-  border-radius: 5px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.status-waiting {
-  background-color: #f5f5f5;
-  padding: 15px;
-  border-radius: 5px;
-  text-align: center;
-  color: #666;
-}
-
-/* Control Buttons */
-.controls-section {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.btn-primary {
-  padding: 15px 30px;
-  background-color: #dc3545;
+  transition: all 0.2s ease;
   color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 18px;
-  font-weight: bold;
-  margin-right: 10px;
+}
+
+.file-upload-button.has-file {
+  background-color: #38a169;
+}
+
+.file-upload-button.has-file:hover {
+  background-color: #2f855a;
+}
+
+.file-upload-button.no-file {
+  background-color: #3182ce;
+}
+
+.file-upload-button.no-file:hover {
+  background-color: #2c5282;
+}
+
+.file-info-display {
+  font-size: 13px;
+  color: #a0aec0;
+  background-color: #2d3748;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #4a5568;
+  word-break: break-all;
+}
+
+/* Gear Selection Buttons */
+.gear-selection-container {
+  display: flex;
+  gap: 8px;
+}
+
+.gear-button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background-color: #c82333;
+.gear-button.selected {
+  border: 2px solid #3182ce;
+  background-color: #2c5282;
+  color: white;
+  font-weight: 600;
 }
 
-.btn-primary:disabled {
-  background-color: #ccc;
+.gear-button.unselected {
+  border: 1px solid #4a5568;
+  background-color: #2d3748;
+  color: #a0aec0;
+  font-weight: 400;
+}
+
+/* Dyno Type and Vehicle Selection */
+.selection-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Slider Controls */
+.slider-container {
+  margin-bottom: 16px;
+}
+
+.slider-input {
+  width: 100%;
+  margin: 4px 0;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #718096;
+}
+
+/* Primary Action Button */
+.primary-action-button {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  color: white;
+}
+
+.primary-action-button.running {
+  background-color: #4a5568;
   cursor: not-allowed;
 }
 
-.btn-secondary {
-  padding: 10px 20px;
-  background-color: #ffc107;
-  color: black;
-  border: none;
-  border-radius: 5px;
-  margin-right: 10px;
+.primary-action-button.ready {
+  background-color: #e53e3e;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
 
-.btn-secondary:hover {
-  background-color: #e0a800;
+/* Right Panel - Graph Area */
+.virtual-dyno-right-panel {
+  background-color: #1a202c;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
-.btn-tertiary {
-  padding: 10px 20px;
-  background-color: #6c757d;
+/* Smoothing Control */
+.smoothing-control {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #2d3748;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #4a5568;
+  z-index: 10;
+}
+
+.smoothing-label {
+  font-size: 12px;
+  color: #a0aec0;
+  font-weight: 500;
+}
+
+.smoothing-select {
+  padding: 4px 8px;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: #1a202c;
+  color: #e2e8f0;
+}
+
+/* Stats Cards */
+.stats-cards-container {
+  background-color: #1a1a1a;
   color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.btn-tertiary:hover {
-  background-color: #545b62;
-}
-
-/* Instructions Panel */
-.instructions-panel {
   padding: 20px;
-  background-color: #e3f2fd;
   border-radius: 8px;
-  margin-top: 20px;
-}
-
-.instructions-title {
-  color: #333;
-  margin-bottom: 15px;
-}
-
-.instructions-list {
-  margin-bottom: 15px;
-  padding-left: 20px;
-}
-
-.instructions-list li {
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
-
-.tech-flow {
-  background-color: #fff3cd;
-  padding: 10px;
-  border-radius: 5px;
-  margin-top: 10px;
-  font-size: 14px;
-}
-
-/* Responsive Design */
-@media (max-width: 1200px) {
-  .dyno-main-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .virtual-dyno-container {
-    padding: 10px;
-  }
-  
-  .dyno-main-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-  
-  .btn-primary {
-    padding: 12px 20px;
-    font-size: 16px;
-  }
-  
-  .controls-section {
-    margin-bottom: 15px;
-  }
-  
-  .controls-section button {
-    margin: 5px;
-    display: block;
-    width: 100%;
-    max-width: 300px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-/* Utility Classes */
-.hidden {
-  display: none;
-}
-
-.text-center {
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
   text-align: center;
 }
 
-.text-bold {
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: 28px;
   font-weight: bold;
 }
 
-.mb-10 {
-  margin-bottom: 10px;
+.stat-value.hp {
+  color: #ff4444;
 }
 
-.mb-15 {
-  margin-bottom: 15px;
+.stat-value.torque {
+  color: #44ff44;
 }
 
-.mb-20 {
-  margin-bottom: 20px;
+.stat-value.boost {
+  color: #4488ff;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #ccc;
+  margin-bottom: 4px;
+}
+
+.stat-rpm {
+  font-size: 10px;
+  color: #888;
+}
+
+/* Canvas Container */
+.canvas-container {
+  flex: 1;
+  min-height: 350px;
+  max-height: 400px;
+  position: relative;
+}
+
+.canvas-graph {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #4a5568;
+  border-radius: 6px;
+  background-color: #1a1a1a;
+}
+
+/* Save Button */
+.save-dyno-button {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 16px;
+  background-color: #38a169;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(56, 161, 105, 0.3);
+  z-index: 10;
+}
+
+.save-dyno-button:hover {
+  background-color: #2f855a;
+}
+
+/* Placeholder Content */
+.placeholder-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2d3748;
+  border-radius: 8px;
+  border: 2px dashed #4a5568;
+  min-height: 350px;
+  max-height: 400px;
+}
+
+.placeholder-content {
+  text-align: center;
+  color: #a0aec0;
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.placeholder-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #68d391;
+}
+
+.placeholder-description {
+  margin: 0;
+  font-size: 14px;
 }

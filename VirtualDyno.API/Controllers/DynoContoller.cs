@@ -260,7 +260,7 @@ namespace VirtualDyno.API.Controllers
                 if (!dataPoints.Any())
                     return NotFound($"No data points found for dyno run {id}");
 
-                var smoothedData = _calculationService.SmoothData(dataPoints, level);
+                var smoothedData = _calculationService.SmoothDataPreservePeaks(dataPoints, level);
 
                 var response = smoothedData.Select(dp => new DynoDataPointDto
                 {

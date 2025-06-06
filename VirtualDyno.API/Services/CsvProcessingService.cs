@@ -305,7 +305,7 @@ namespace VirtualDyno.API.Services
                 else
                 {
                     var beforeSmoothing = groupedData.ToList(); // Keep original for logging
-                    finalData = _calculationService.SmoothData(groupedData, defaultSmoothingLevel);
+                    finalData = _calculationService.SmoothDataPreservePeaks(groupedData, defaultSmoothingLevel);
 
                     // Log smoothing effects
                     LogSmoothingEffects(beforeSmoothing, finalData, defaultSmoothingLevel);
