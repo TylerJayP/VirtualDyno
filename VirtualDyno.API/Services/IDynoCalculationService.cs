@@ -8,6 +8,7 @@ namespace VirtualDyno.API.Services
         /// Calculate horsepower using advanced algorithms with fallback to basic calculation
         /// </summary>
         double CalculateAdvancedHorsepower(AdvancedDynoData data, int gear, CarPreset carPreset, AdvancedDynoSettings? settings = null);
+        double CalculateGearCorrection(int gear, CarPreset carPreset);
         double CalculateFromMAF(AdvancedDynoData data, CarPreset carPreset);
         double CalculateFromMAP(AdvancedDynoData data, CarPreset carPreset);
         double CalculateFromLoad(AdvancedDynoData data, CarPreset carPreset);

@@ -71,9 +71,9 @@ namespace VirtualDyno.API.Services
 
             var drivetrainCorrection = carPreset.DriveType switch
             {
-                "FWD" => 1.0,
-                "AWD" => 0.955,
-                "RWD" => 0.98,
+                "FWD" => 1.0, // 230hp FWD car baseline --> 230hp
+                "AWD" => 0.955, // 230hp FWD car baseline --> 219.65 --> 5%
+                "RWD" => 0.98, // 230hp FWD car baseline --> 225hp --> 2%
                 _ => 1.0
             };
             baseHP *= drivetrainCorrection;
@@ -83,6 +83,25 @@ namespace VirtualDyno.API.Services
             baseHP *= calibrationFactor;
 
             return Math.Max(baseHP, 0);
+        }
+
+        public double CalculateGearCorrection(int gear, CarPreset carPreset)
+        {
+            var gearRatio = gear switch
+            {
+                3 => carPreset.GearRatio3rd,
+                4 => carPreset.GearRatio4th, // Fourth gear is usually direct drive
+                5 => carPreset.GearRatio5th, // Fifth gear may have slight overdrive
+                _ => carPreset.GearRatio4th
+            };
+
+            var baselineRatio = carPreset.GearRatio4th;
+
+            // Higher the gear ratio, the more torque multiplication -> Slighly lower dyno reading
+            // This is a simplification, but it works for most cases
+            var ratioCorrection = baselineRatio / gearRatio;
+
+            return 0.98 + (ratioCorrection * 0.015);
         }
 
         public double CalculateFromMAF(AdvancedDynoData data, CarPreset carPreset)
