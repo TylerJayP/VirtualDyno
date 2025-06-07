@@ -508,26 +508,8 @@ const VirtualDyno = () => {
     }
   };
 
-  // Reset dyno
-  const resetDyno = () => {
-    setDynoResults(null);
-    setCurrentDataPoint(0);
-    setLiveGraphData([]);
-    setSmoothedData([]);
-    setSmoothedPeaks(null);
-    setSmoothingLevel(0);
-    setCurrentPeaks({
-      maxHP: 0,
-      maxTorque: 0,
-      maxBoost: 0,
-      currentHP: 0,
-      currentTorque: 0,
-      currentBoost: 0
-    });
-  };
-
   const inputStyle = {
-    width: '100%',
+    width: '95%',
     padding: '8px 12px',
     border: '1px solid #4a5568',
     borderRadius: '4px',
@@ -577,7 +559,7 @@ const VirtualDyno = () => {
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text'
         }}>
-          🏁 Virtual Dyno Pro
+          Tyler's Virtual Dyno
         </h1>
         <p style={{ 
           margin: '6px 0 0 0', 
@@ -586,14 +568,14 @@ const VirtualDyno = () => {
           fontWeight: '400',
           color: '#a0aec0'
         }}>
-          Professional Dyno Analysis & Simulation
+          Personal Dyno Analysis & Simulation
         </p>
       </div>
 
       {/* Main Content */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '360px 1fr',
+        gridTemplateColumns: '260px 1fr',
         height: 'calc(100vh - 100px)', // Increased available height
         gap: '0'
       }}>
@@ -602,14 +584,13 @@ const VirtualDyno = () => {
         <div style={{
           backgroundColor: '#1a202c',
           borderRight: '1px solid #2d3748',
-          padding: '20px',
-          overflowY: 'auto'
+          padding: '40px 10px',
         }}>
           
           {/* File Upload Section */}
           <div style={sectionStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <label style={{ ...labelStyle, margin: 0, flex: 1 }}>📁 Upload Datalog</label>
+              <label style={{ ...labelStyle, margin: 0, flex: 1 }}>Upload Datalog</label>
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 style={{
@@ -654,7 +635,7 @@ const VirtualDyno = () => {
 
           {/* Vehicle Settings */}
           <div style={sectionStyle}>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>🚗 Vehicle Setup</h3>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>Vehicle Setup</h3>
             
             {/* Car Selection */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -704,7 +685,7 @@ const VirtualDyno = () => {
                 type="number"
                 value={dynoSettings.weight}
                 onChange={(e) => setDynoSettings(prev => ({ ...prev, weight: parseInt(e.target.value) || 0 }))}
-                style={{ ...inputStyle, fontSize: '13px' }}
+                style={{ ...inputStyle, fontSize: '13px', padding: '6px 5px' }}
                 min="1000"
                 max="10000"
                 step="50"
@@ -714,7 +695,7 @@ const VirtualDyno = () => {
 
           {/* Dyno Settings */}
           <div style={sectionStyle}>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>⚙️ Dyno Configuration</h3>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>Dyno Configuration</h3>
             
             {/* Dyno Type */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -733,7 +714,7 @@ const VirtualDyno = () => {
 
           {/* Environmental Settings */}
           <div style={sectionStyle}>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>🌡️ Environmental</h3>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '15px', color: '#68d391' }}>Environmental</h3>
             
             {/* Temperature */}
             <div style={{ marginBottom: '14px' }}>
@@ -767,27 +748,6 @@ const VirtualDyno = () => {
               </div>
             </div>
           </div>
-
-          {/* Run Button */}
-          <button 
-            onClick={runVirtualDyno}
-            disabled={!csvData.length || isRunning}
-            style={{
-              width: '100%',
-              padding: '14px',
-              backgroundColor: isRunning ? '#4a5568' : '#e53e3e',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '15px',
-              fontWeight: '700',
-              cursor: isRunning ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-            }}
-          >
-            {isRunning ? '🏃 PROCESSING...' : '🚀 START VIRTUAL DYNO'}
-          </button>
         </div>
 
         {/* Right Panel - Graph */}
@@ -802,45 +762,6 @@ const VirtualDyno = () => {
           {/* Stats Cards or Placeholder */}
           {(isRunning || dynoResults) ? (
             <div>
-              {/* Smoothing Control - Only show after run */}
-              {dynoResults && !isRunning && (
-                <div style={{
-                  position: 'absolute',
-                  top: '24px',
-                  right: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  backgroundColor: '#2d3748',
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid #4a5568',
-                  zIndex: 10
-                }}>
-                  <label style={{ fontSize: '11px', color: '#a0aec0', fontWeight: '500' }}>
-                    Smoothing:
-                  </label>
-                  <select
-                    value={smoothingLevel}
-                    onChange={(e) => handleSmoothingChange(parseInt(e.target.value))}
-                    style={{
-                      padding: '3px 6px',
-                      border: '1px solid #4a5568',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      backgroundColor: '#1a202c',
-                      color: '#e2e8f0'
-                    }}
-                  >
-                    {smoothingOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
               {/* Peak Stats Card */}
               <div style={{
                 backgroundColor: '#1a1a1a',
@@ -902,6 +823,46 @@ const VirtualDyno = () => {
                 minHeight: '400px', // Increased minimum
                 maxHeight: '600px' // Increased maximum
               }}>
+                {/* Smoothing Control - Only show after run - positioned over graph */}
+                {(dynoResults || isRunning) && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '4px',
+                    left: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    backgroundColor: 'rgba(46, 98, 187, 0.08)',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid #4a5568',
+                    zIndex: 10,
+                    backdropFilter: 'blur(4px)'
+                  }}>
+                    <label style={{ fontSize: '11px', color: '#a0aec0', fontWeight: '500' }}>
+                      Smoothing:
+                    </label>
+                    <select
+                      value={smoothingLevel}
+                      onChange={(e) => handleSmoothingChange(parseInt(e.target.value))}
+                      style={{
+                        padding: '3px 6px',
+                        border: '1px solid #4a5568',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        backgroundColor: '#1a202c',
+                        color: '#e2e8f0'
+                      }}
+                    >
+                      {smoothingOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
                 <canvas
                   ref={canvasRef}
                   style={{
@@ -912,18 +873,21 @@ const VirtualDyno = () => {
                     backgroundColor: '#1a1a1a'
                   }}
                 />
-                
-                {/* Save Dyno Button - Only show after completion */}
-                {dynoResults && !isRunning && (
+              </div>
+              
+              {/* Save Dyno Button - Only show after completion */}
+              {dynoResults && !isRunning && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  marginTop: '12px'
+                }}>
                   <button 
                     onClick={() => {
                       // TODO: Implement save functionality
                       alert('Save functionality will be implemented soon!');
                     }}
                     style={{
-                      position: 'absolute',
-                      bottom: '16px',
-                      right: '16px',
                       padding: '8px 14px',
                       backgroundColor: '#38a169',
                       color: 'white',
@@ -933,16 +897,15 @@ const VirtualDyno = () => {
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s ease',
-                      boxShadow: '0 2px 8px rgba(56, 161, 105, 0.3)',
-                      zIndex: 10
+                      boxShadow: '0 2px 8px rgba(56, 161, 105, 0.3)'
                     }}
                     onMouseOver={(e) => e.target.style.backgroundColor = '#2f855a'}
                     onMouseOut={(e) => e.target.style.backgroundColor = '#38a169'}
                   >
                     💾 Save Dyno
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ) : (
             <div style={{
@@ -961,9 +924,41 @@ const VirtualDyno = () => {
               }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#68d391' }}>Ready for Dyno Run</h3>
-                <p style={{ margin: 0, fontSize: '14px' }}>
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px' }}>
                   Upload a datalog file and configure your settings to begin
                 </p>
+                
+                {/* Prominent Run Button in Main Area */}
+                <button 
+                  onClick={runVirtualDyno}
+                  disabled={!csvData.length || isRunning}
+                  style={{
+                    padding: '16px 32px',
+                    backgroundColor: isRunning ? '#4a5568' : (!csvData.length ? '#4a5568' : '#e53e3e'),
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: (!csvData.length || isRunning) ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    transform: (!csvData.length || isRunning) ? 'none' : 'scale(1)',
+                    minWidth: '200px'
+                  }}
+                  onMouseOver={(e) => {
+                    if (csvData.length && !isRunning) {
+                      e.target.style.transform = 'scale(1.05)';
+                      e.target.style.boxShadow = '0 6px 16px rgba(229, 62, 62, 0.4)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.transform = 'scale(1)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+                  }}
+                >
+                  {isRunning ? '🏃 PROCESSING...' : (!csvData.length ? 'Upload File First' : 'START VIRTUAL DYNO')}
+                </button>
               </div>
             </div>
           )}
