@@ -832,20 +832,6 @@ const VirtualDyno = () => {
                 style={{ display: 'none' }}
               />
             </div>
-            
-            {csvFile && (
-              <div style={{
-                fontSize: '12px',
-                color: '#a0aec0',
-                backgroundColor: '#2d3748',
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #4a5568',
-                wordBreak: 'break-all'
-              }}>
-                📄 {csvFile.name} ({csvData.length} valid points)
-              </div>
-            )}
           </div>
 
           {/* Vehicle Settings */}
@@ -1108,7 +1094,28 @@ const VirtualDyno = () => {
                     </select>
                   </div>
                 )}
-                
+                {/* File Name Display */}
+                {csvFile && (
+                  <div style={{
+                  position: 'absolute',
+                  bottom: '5px',
+                  left: '12px',
+                  zIndex: 10,
+                  fontSize: '11px',
+                  color: '#FFDDF0',
+                  fontFamily: 'monospace',
+                  fontWeight: '500',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                  maxWidth: '300px',
+                  wordBreak: 'break-all'
+                }}>
+    {csvFile.name}
+    {csvData.length > 0 && (
+      <span style={{ color: '#888', marginLeft: '6px' }}>
+      </span>
+    )}
+  </div>
+)}
                 <canvas
                   ref={canvasRef}
                   style={{
