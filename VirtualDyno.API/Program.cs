@@ -1,96 +1,39 @@
-using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.Features;
 using VirtualDyno.API.Data;
+using VirtualDyno.API.Infrastructure;
 using VirtualDyno.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection") ??
-        "Server=(localdb)\\mssqllocaldb;Database=VirtualDynoDB;Trusted_Connection=true;MultipleActiveResultSets=true"));
-
-// Register business services
-builder.Services.AddScoped<IDynoCalculationService, DynoCalculationService>();
-builder.Services.AddScoped<ICsvProcessingService, CsvProcessingService>();
-
-// Add controllers and API documentation
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new()
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(o =>
     {
-        Title = "Virtual Dyno API",
-        Version = "v1",
-        Description = "Professional dyno analysis API for processing automotive datalog files"
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        o.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals;
     });
 
-    // Include XML comments for better API documentation
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
-    {
-        c.IncludeXmlComments(xmlPath);
-    }
-});
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<DynoExceptionHandler>();
+builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = DynoService.MaxLogBytes + 1_000_000);
 
-// Add CORS for React frontend
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("ReactApp", policy =>
-    {
-        policy.WithOrigins(
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:5173"
-            )
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-});
+builder.Services.AddDynoStorage(builder.Configuration);   // SQL Server via EF Core, or in-memory
+builder.Services.AddScoped<DynoService>();
+builder.Services.AddApiDocs();
 
-// Add logging
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddDebug();
+string[] origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? ["http://localhost:5173"];
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Virtual Dyno API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
-
-app.UseHttpsRedirection();
-
-// Enable CORS
-app.UseCors("ReactApp");
-
-app.UseAuthorization();
-
+app.UseExceptionHandler();
+if (app.Environment.IsDevelopment()) app.MapApiDocs();
+app.UseCors();
 app.MapControllers();
 
-// Ensure database is created
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    try
-    {
-        context.Database.EnsureCreated();
-        Console.WriteLine("Database initialized successfully");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error initializing database: {ex.Message}");
-    }
-}
-
+app.InitializeStorage();
 app.Run();
+
+/// <summary>Exposed for integration tests.</summary>
+public partial class Program;
