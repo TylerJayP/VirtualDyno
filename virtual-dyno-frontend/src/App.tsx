@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { api, ApiError } from './api';
 import { ChecksPanel } from './components/ChecksPanel';
-import { DynoChart } from './components/DynoChart';
+import { DynoSheet } from './components/DynoSheet';
 import { RunsPanel } from './components/RunsPanel';
 import { SetupPanel } from './components/SetupPanel';
-import { SheetHeader } from './components/SheetHeader';
-import { TraceStrips } from './components/TraceStrips';
 import { buildRows, CURRENT_COLOR, OVERLAY_COLORS, type Series } from './series';
 import { loadStored, rememberWeight, saveStored } from './settings';
 import type { DynoResult, DynoSettings, RunDetail, RunSummary, Vehicle } from './types';
@@ -34,7 +32,9 @@ export default function App() {
   const [result, setResult] = useState<DynoResult | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [busy, setBusy] = useState(false);
-  const [animate, setAnimate] = useState(false);
+  // A newly opened log or run plays its pull back once its first analysis arrives.
+  const pendingReplay = useRef(false);
+  const [replayToken, setReplayToken] = useState(0);
   const [overlayIds, setOverlayIds] = useState<number[]>([]);
   const [overlays, setOverlays] = useState<Record<number, RunDetail>>({});
   const [saving, setSaving] = useState(false);
@@ -68,9 +68,14 @@ export default function App() {
         .then(r => {
           setResult(r);
           setProblem(null);
+          if (pendingReplay.current) {
+            pendingReplay.current = false;
+            setReplayToken(n => n + 1);
+          }
         })
         .catch(e => {
           if (controller.signal.aborted) return;
+          pendingReplay.current = false;
           setProblem(asProblem(e));
           setResult(null);
         })
@@ -81,13 +86,6 @@ export default function App() {
       controller.abort();
     };
   }, [log, effective]);
-
-  // The sweep animation plays once per newly loaded log, not on every setting tweak.
-  useEffect(() => {
-    if (!animate || !result) return;
-    const t = setTimeout(() => setAnimate(false), 1400);
-    return () => clearTimeout(t);
-  }, [animate, result]);
 
   // Overlays are recomputed with the same correction and smoothing as the open run.
   const { correction, smoothingBias } = settings;
@@ -123,7 +121,7 @@ export default function App() {
     setLog({ file, fileName: file.name });
     setOpenRun(null);
     setSavedNote(null);
-    setAnimate(true);
+    pendingReplay.current = true;
     setSettings(s => ({ ...s, pullIndex: null, weightLb: null }));
   };
 
@@ -155,7 +153,7 @@ export default function App() {
       setOpenRun({ id, name: detail.run.name });
       setOverlayIds(ids => ids.filter(x => x !== id));
       setSavedNote(null);
-      setAnimate(true);
+      pendingReplay.current = true;
     } catch (e) {
       setProblem(asProblem(e));
     }
@@ -213,11 +211,6 @@ export default function App() {
     if (file) loadFile(file);
   };
 
-  const slip =
-    result && result.gearing.slipFromRpm != null && result.gearing.slipToRpm != null
-      ? { from: result.gearing.slipFromRpm, to: result.gearing.slipToRpm }
-      : null;
-
   return (
     <div
       className="app"
@@ -266,28 +259,16 @@ export default function App() {
 
       <main className="sheet paper" aria-busy={busy}>
         {result ? (
-          <>
-            <div className="sheet-top">
-              <SheetHeader result={result} />
-              {problem && <ProblemNote problem={problem} />}
-              <div className="status-line" aria-live="polite">
-                {busy ? 'Updating…' : ''}
-              </div>
-            </div>
-            <div className="chart-wrap">
-              <DynoChart
-                rows={rows}
-                series={series}
-                minRpm={minRpm}
-                maxRpm={maxRpm}
-                peaks={result.peaks}
-                slip={slip}
-                animate={animate}
-              />
-            </div>
-            <Legend series={series} />
-            <TraceStrips rows={rows} minRpm={minRpm} maxRpm={maxRpm} />
-          </>
+          <DynoSheet
+            result={result}
+            series={series}
+            rows={rows}
+            minRpm={minRpm}
+            maxRpm={maxRpm}
+            busy={busy}
+            notice={problem && <ProblemNote problem={problem} />}
+            replayToken={replayToken}
+          />
         ) : (
           <>
             <div className="sheet-top">{problem && <ProblemNote problem={problem} />}</div>
@@ -329,34 +310,6 @@ function ProblemNote({ problem }: { problem: Problem }) {
     <div className="problem" role="alert">
       <strong>{problem.title}</strong>
       {problem.message}
-    </div>
-  );
-}
-
-function Legend({ series }: { series: Series[] }) {
-  return (
-    <div className="legend">
-      <span className="key">
-        <svg width="26" height="8" aria-hidden="true">
-          <line x1="1" y1="4" x2="25" y2="4" stroke="var(--ink)" strokeWidth="2.5" />
-        </svg>
-        Power
-      </span>
-      <span className="key">
-        <svg width="26" height="8" aria-hidden="true">
-          <line x1="1" y1="4" x2="25" y2="4" stroke="var(--ink)" strokeWidth="2" strokeDasharray="6 4" />
-        </svg>
-        Torque
-      </span>
-      {series.length > 1 &&
-        series.map(s => (
-          <span className="key" key={s.id}>
-            <svg width="10" height="10" aria-hidden="true">
-              <rect width="10" height="10" rx="2" fill={s.color} />
-            </svg>
-            {s.name}
-          </span>
-        ))}
     </div>
   );
 }

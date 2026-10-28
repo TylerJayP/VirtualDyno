@@ -4,22 +4,27 @@ import {
   LineChart,
   ReferenceArea,
   ReferenceDot,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { fmt } from '../format';
-import { niceMax, type Row, type Series } from '../series';
+import type { Live } from '../replay';
+import { CURRENT_COLOR, niceMax, type Row, type Series } from '../series';
 
 interface Props {
+  /** What to draw (masked during a replay). */
   rows: Row[];
+  /** The complete rows, so the axes are fixed before the curve is drawn. */
+  fullRows: Row[];
   series: Series[];
   minRpm: number;
   maxRpm: number;
   peaks: { whp: number; whpRpm: number; wtq: number; wtqRpm: number } | null;
   slip: { from: number; to: number } | null;
-  animate: boolean;
+  live: Live | null;
 }
 
 export const Y_AXIS_WIDTH = 56;
@@ -30,9 +35,9 @@ export function rpmTicks(min: number, max: number): number[] {
   return ticks;
 }
 
-export function DynoChart({ rows, series, minRpm, maxRpm, peaks, slip, animate }: Props) {
+export function DynoChart({ rows, fullRows, series, minRpm, maxRpm, peaks, slip, live }: Props) {
   const top = niceMax(
-    Math.max(0, ...rows.flatMap(r => series.flatMap(s => [r[`p_${s.id}`] ?? 0, r[`t_${s.id}`] ?? 0]))) * 1.06,
+    Math.max(0, ...fullRows.flatMap(r => series.flatMap(s => [r[`p_${s.id}`] ?? 0, r[`t_${s.id}`] ?? 0]))) * 1.06,
     50,
   );
   const xMin = Math.floor(minRpm / 500) * 500;
@@ -84,9 +89,7 @@ export function DynoChart({ rows, series, minRpm, maxRpm, peaks, slip, animate }
             dot={false}
             activeDot={{ r: 3 }}
             connectNulls={false}
-            isAnimationActive={animate && s.id === 'cur'}
-            animationDuration={1100}
-            animationEasing="ease-out"
+            isAnimationActive={false}
           />,
           <Line
             key={`p_${s.id}`}
@@ -97,9 +100,7 @@ export function DynoChart({ rows, series, minRpm, maxRpm, peaks, slip, animate }
             dot={false}
             activeDot={{ r: 4 }}
             connectNulls={false}
-            isAnimationActive={animate && s.id === 'cur'}
-            animationDuration={1100}
-            animationEasing="ease-out"
+            isAnimationActive={false}
           />,
         ])}
 
@@ -110,7 +111,17 @@ export function DynoChart({ rows, series, minRpm, maxRpm, peaks, slip, animate }
           </>
         )}
 
-        <Tooltip content={<ChartTooltip series={series} />} cursor={{ stroke: 'var(--ink-3)', strokeDasharray: '3 3' }} isAnimationActive={false} />
+        {live && (
+          <>
+            <ReferenceLine x={live.rpm} stroke="var(--ink-3)" strokeDasharray="3 3" />
+            <ReferenceDot x={live.rpm} y={live.wtq} r={4} fill="#fff" stroke={CURRENT_COLOR} strokeWidth={2} />
+            <ReferenceDot x={live.rpm} y={live.whp} r={5} fill={CURRENT_COLOR} stroke="#fff" strokeWidth={1.5} />
+          </>
+        )}
+
+        {!live && (
+          <Tooltip content={<ChartTooltip series={series} />} cursor={{ stroke: 'var(--ink-3)', strokeDasharray: '3 3' }} isAnimationActive={false} />
+        )}
       </LineChart>
     </ResponsiveContainer>
   );

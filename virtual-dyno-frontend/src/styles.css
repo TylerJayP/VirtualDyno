@@ -251,6 +251,8 @@ details.more summary {
 .specs {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
+  min-height: 57px;      /* two lines, so the chart doesn't move when a replay ends */
   gap: 4px 28px;
   margin: 14px 0 0;
   padding: 10px 0 0;
@@ -261,6 +263,7 @@ details.more summary {
 .specs div { display: flex; gap: 6px; }
 .specs dt { color: var(--ink-3); }
 .specs dd { margin: 0; font-weight: 500; }
+.specs dd.knock-on { color: var(--run); }
 
 .status-line { font-size: var(--t-sm); color: var(--ink-2); min-height: 1.5em; margin-top: 6px; }
 
@@ -285,6 +288,7 @@ details.more summary {
 }
 
 .legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.legend .replay { margin-left: auto; padding: 4px 12px; font-size: var(--t-sm); }
 .legend svg { flex: none; }
 
 .strips { border-top: 1px solid var(--grid); padding: 6px 10px 12px 0; }
