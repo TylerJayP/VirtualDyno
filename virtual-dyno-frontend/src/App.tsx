@@ -4,7 +4,7 @@ import { ChecksPanel } from './components/ChecksPanel';
 import { DynoSheet } from './components/DynoSheet';
 import { RunsPanel } from './components/RunsPanel';
 import { SetupPanel } from './components/SetupPanel';
-import { buildRows, CURRENT_COLOR, OVERLAY_COLORS, type Series } from './series';
+import { buildRows, OVERLAY_DASHES, type Series } from './series';
 import { loadStored, rememberWeight, saveStored } from './settings';
 import type { DynoResult, DynoSettings, RunDetail, RunSummary, Vehicle } from './types';
 
@@ -99,19 +99,19 @@ export default function App() {
     };
   }, [overlayIds, correction, smoothingBias]);
 
-  const colors = useMemo(
-    () => Object.fromEntries(overlayIds.map((id, i) => [id, OVERLAY_COLORS[i % OVERLAY_COLORS.length]])) as Record<number, string>,
+  const dashes = useMemo(
+    () => Object.fromEntries(overlayIds.map((id, i) => [id, OVERLAY_DASHES[i % OVERLAY_DASHES.length]])) as Record<number, string>,
     [overlayIds],
   );
 
   const series = useMemo<Series[]>(() => {
     if (!result) return [];
-    const current: Series = { id: 'cur', name: openRun?.name ?? 'This log', color: CURRENT_COLOR, points: result.points };
+    const current: Series = { id: 'cur', name: openRun?.name ?? 'This log', points: result.points };
     const others = overlayIds
       .filter(id => overlays[id])
-      .map(id => ({ id: String(id), name: overlays[id].run.name, color: colors[id], points: overlays[id].analysis.points }));
+      .map(id => ({ id: String(id), name: overlays[id].run.name, dash: dashes[id], points: overlays[id].analysis.points }));
     return [current, ...others];
-  }, [result, openRun, overlayIds, overlays, colors]);
+  }, [result, openRun, overlayIds, overlays, dashes]);
 
   const { rows, minRpm, maxRpm } = useMemo(() => buildRows(series, result?.points ?? null), [series, result]);
 
@@ -236,8 +236,8 @@ export default function App() {
       <header className="brand">
         <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
           <rect width="32" height="32" rx="6" fill="#15233A" />
-          <path d="M5 25 C10 24 12 11 17 9 C21 8 24 12 27 19" fill="none" stroke="#D7263D" strokeWidth="3" strokeLinecap="round" />
-          <path d="M5 27 C9 14 13 12 17 12 C21 12 24 17 27 25" fill="none" stroke="#9FB3C8" strokeWidth="2" strokeDasharray="3 2.5" strokeLinecap="round" />
+          <path d="M5 26 C10 25 12 12 17 10 C21 9 24 13 27 20" fill="none" stroke="#5C93F2" strokeWidth="2.75" strokeLinecap="round" />
+          <path d="M5 23 C9 12 13 9 17 9.5 C21 10 24 15 27 25" fill="none" stroke="#E5485C" strokeWidth="2.75" strokeLinecap="round" />
         </svg>
         <h1>Virtual Dyno</h1>
       </header>
@@ -293,7 +293,7 @@ export default function App() {
         <RunsPanel
           runs={runs}
           overlayIds={overlayIds}
-          colors={colors}
+          dashes={dashes}
           openRunId={openRun?.id ?? null}
           currentGear={result?.gearing.detectedGear ?? null}
           onToggleOverlay={toggleOverlay}

@@ -112,14 +112,14 @@ export function ChecksPanel({ result }: { result: DynoResult }) {
           <p>At peak power, this is what the car was pushing against.</p>
           <div className="breakdown-bar" role="img" aria-label="Power split at peak">
             <span style={{ width: `${(breakdown.accelerationHp / total) * 100}%`, background: 'var(--ink)' }} />
-            <span style={{ width: `${(breakdown.aeroHp / total) * 100}%`, background: '#1f5fbf' }} />
-            <span style={{ width: `${(breakdown.rollingHp / total) * 100}%`, background: '#8aa4bb' }} />
+            <span style={{ width: `${(breakdown.aeroHp / total) * 100}%`, background: '#6f8499' }} />
+            <span style={{ width: `${(breakdown.rollingHp / total) * 100}%`, background: '#b9c7d4' }} />
             {breakdown.gradeHp > 0 && <span style={{ width: `${(breakdown.gradeHp / total) * 100}%`, background: '#c77b00' }} />}
           </div>
           <div className="breakdown-keys">
             <span><i style={{ background: 'var(--ink)' }} />Accelerating the car {fmt.whole(breakdown.accelerationHp)} hp</span>
-            <span><i style={{ background: '#1f5fbf' }} />Air drag {fmt.whole(breakdown.aeroHp)} hp</span>
-            <span><i style={{ background: '#8aa4bb' }} />Tires {fmt.whole(breakdown.rollingHp)} hp</span>
+            <span><i style={{ background: '#6f8499' }} />Air drag {fmt.whole(breakdown.aeroHp)} hp</span>
+            <span><i style={{ background: '#b9c7d4' }} />Tires {fmt.whole(breakdown.rollingHp)} hp</span>
             {breakdown.gradeHp > 0 && <span><i style={{ background: '#c77b00' }} />Hill {fmt.whole(breakdown.gradeHp)} hp</span>}
           </div>
         </section>

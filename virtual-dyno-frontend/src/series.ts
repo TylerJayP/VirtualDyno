@@ -1,13 +1,16 @@
 import type { DynoPoint } from './types';
 
-/** Colors for overlaid saved runs. The open run is always dyno-sheet red. */
-export const OVERLAY_COLORS = ['#1f5fbf', '#12856f', '#c77b00', '#6b47b8', '#3f6f8f'];
-export const CURRENT_COLOR = '#d7263d';
+/** Color means the measurement: power is blue, torque is red, on every run. */
+export const POWER_COLOR = '#1c5fd0';
+export const TORQUE_COLOR = '#d7263d';
+
+/** Line style tells runs apart: the open run is solid, compared runs get these in order. */
+export const OVERLAY_DASHES = ['9 5', '2 4', '12 4 2 4', '5 3', '1 3'];
 
 export interface Series {
   id: string;           // 'cur' for the open run, otherwise the saved run id
   name: string;
-  color: string;
+  dash?: string;        // undefined = solid
   points: DynoPoint[];
 }
 

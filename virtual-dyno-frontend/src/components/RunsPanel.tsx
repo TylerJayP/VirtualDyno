@@ -1,10 +1,11 @@
 import type { RunSummary } from '../types';
 import { fmt } from '../format';
+import { LineSample } from './LineSample';
 
 interface Props {
   runs: RunSummary[];
   overlayIds: number[];
-  colors: Record<number, string>;
+  dashes: Record<number, string>;
   openRunId: number | null;
   currentGear: number | null;
   onToggleOverlay: (id: number) => void;
@@ -12,7 +13,7 @@ interface Props {
   onDelete: (run: RunSummary) => void;
 }
 
-export function RunsPanel({ runs, overlayIds, colors, openRunId, currentGear, onToggleOverlay, onOpen, onDelete }: Props) {
+export function RunsPanel({ runs, overlayIds, dashes, openRunId, currentGear, onToggleOverlay, onOpen, onDelete }: Props) {
   return (
     <section>
       <h2>Saved runs</h2>
@@ -26,7 +27,9 @@ export function RunsPanel({ runs, overlayIds, colors, openRunId, currentGear, on
             return (
               <li key={run.id} className={run.id === openRunId ? 'open' : undefined}>
                 <div className="top">
-                  <span className="swatch" style={on ? { background: colors[run.id], borderColor: colors[run.id] } : { visibility: 'hidden' }} />
+                  <span className="swatch" style={on ? undefined : { visibility: 'hidden' }}>
+                    <LineSample dash={dashes[run.id]} width={2} length={16} />
+                  </span>
                   <span className="name" title={run.name}>{run.name}</span>
                   {run.id !== openRunId && (
                     <label className="checkbox">

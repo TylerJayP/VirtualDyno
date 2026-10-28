@@ -12,7 +12,8 @@ import {
 } from 'recharts';
 import { fmt } from '../format';
 import type { Live } from '../replay';
-import { CURRENT_COLOR, niceMax, type Row, type Series } from '../series';
+import { niceMax, POWER_COLOR, TORQUE_COLOR, type Row, type Series } from '../series';
+import { LineSample } from './LineSample';
 
 interface Props {
   /** What to draw (masked during a replay). */
@@ -71,21 +72,23 @@ export function DynoChart({ rows, fullRows, series, minRpm, maxRpm, peaks, slip,
           <ReferenceArea
             x1={slip.from}
             x2={slip.to}
-            fill="#d7263d"
-            fillOpacity={0.07}
+            fill="#c77b00"
+            fillOpacity={0.09}
             stroke="none"
-            label={{ value: 'Slip', position: 'insideTop', fill: '#b02035', fontSize: 12 }}
+            label={{ value: 'Slip', position: 'insideTop', fill: '#a85700', fontSize: 12 }}
           />
         )}
 
-        {series.flatMap(s => [
+        {/* Compared runs first, so the open run draws on top. */}
+        {[...series].reverse().flatMap(s => [
           <Line
             key={`t_${s.id}`}
             dataKey={`t_${s.id}`}
             name={`${s.name} torque`}
-            stroke={s.color}
-            strokeWidth={2}
-            strokeDasharray="7 5"
+            stroke={TORQUE_COLOR}
+            strokeWidth={s.id === 'cur' ? 2.75 : 2}
+            strokeDasharray={s.dash}
+            strokeOpacity={s.id === 'cur' ? 1 : 0.7}
             dot={false}
             activeDot={{ r: 3 }}
             connectNulls={false}
@@ -95,8 +98,10 @@ export function DynoChart({ rows, fullRows, series, minRpm, maxRpm, peaks, slip,
             key={`p_${s.id}`}
             dataKey={`p_${s.id}`}
             name={`${s.name} power`}
-            stroke={s.color}
-            strokeWidth={s.id === 'cur' ? 3 : 2.25}
+            stroke={POWER_COLOR}
+            strokeWidth={s.id === 'cur' ? 3 : 2}
+            strokeDasharray={s.dash}
+            strokeOpacity={s.id === 'cur' ? 1 : 0.7}
             dot={false}
             activeDot={{ r: 4 }}
             connectNulls={false}
@@ -106,16 +111,16 @@ export function DynoChart({ rows, fullRows, series, minRpm, maxRpm, peaks, slip,
 
         {peaks && (
           <>
-            <ReferenceDot x={peaks.whpRpm} y={peaks.whp} r={4.5} fill="var(--run)" stroke="#fff" strokeWidth={1.5} />
-            <ReferenceDot x={peaks.wtqRpm} y={peaks.wtq} r={4} fill="#fff" stroke="var(--run)" strokeWidth={2} />
+            <ReferenceDot x={peaks.whpRpm} y={peaks.whp} r={5} fill={POWER_COLOR} stroke="#fff" strokeWidth={1.5} />
+            <ReferenceDot x={peaks.wtqRpm} y={peaks.wtq} r={5} fill={TORQUE_COLOR} stroke="#fff" strokeWidth={1.5} />
           </>
         )}
 
         {live && (
           <>
             <ReferenceLine x={live.rpm} stroke="var(--ink-3)" strokeDasharray="3 3" />
-            <ReferenceDot x={live.rpm} y={live.wtq} r={4} fill="#fff" stroke={CURRENT_COLOR} strokeWidth={2} />
-            <ReferenceDot x={live.rpm} y={live.whp} r={5} fill={CURRENT_COLOR} stroke="#fff" strokeWidth={1.5} />
+            <ReferenceDot x={live.rpm} y={live.wtq} r={5} fill={TORQUE_COLOR} stroke="#fff" strokeWidth={1.5} />
+            <ReferenceDot x={live.rpm} y={live.whp} r={5} fill={POWER_COLOR} stroke="#fff" strokeWidth={1.5} />
           </>
         )}
 
@@ -146,15 +151,15 @@ function ChartTooltip({ series, active, payload }: TooltipProps) {
         <thead>
           <tr>
             <td />
-            <td style={{ color: 'var(--ink-3)' }}>whp</td>
-            <td style={{ color: 'var(--ink-3)' }}>lb-ft</td>
+            <td style={{ color: POWER_COLOR, fontWeight: 600 }}>whp</td>
+            <td style={{ color: TORQUE_COLOR, fontWeight: 600 }}>lb-ft</td>
           </tr>
         </thead>
         <tbody>
           {visible.map(s => (
             <tr key={s.id}>
               <td>
-                <span style={{ color: s.color, fontWeight: 600 }}>■</span> {s.name}
+                {visible.length > 1 && <LineSample dash={s.dash} width={2} length={20} />} {s.name}
               </td>
               <td>{fmt.one(row[`p_${s.id}`] as number)}</td>
               <td>{fmt.one(row[`t_${s.id}`] as number)}</td>

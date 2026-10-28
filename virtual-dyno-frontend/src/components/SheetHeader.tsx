@@ -24,7 +24,7 @@ export function SheetHeader({ result, live }: { result: DynoResult; live: Live |
           <span className="at">at {fmt.rpm(live ? live.rpm : peaks.whpRpm)} rpm</span>
         </div>
         <div className="readout">
-          <span className="value">{fmt.one(wtq)}</span>
+          <span className="value torque">{fmt.one(wtq)}</span>
           <span className="unit">lb-ft</span>
           <span className="at">at {fmt.rpm(live ? live.rpm : peaks.wtqRpm)} rpm</span>
         </div>

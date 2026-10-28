@@ -9,7 +9,9 @@
   --ink: #15233a;          /* deep navy text */
   --ink-2: #4b5c71;        /* secondary text */
   --ink-3: #74859a;        /* hints */
-  --run: #d7263d;          /* the current run: dyno-sheet red */
+  --power: #1c5fd0;        /* power is blue on every chart and readout */
+  --torque: #d7263d;       /* torque is red */
+  --alert: #d7263d;        /* errors and knock */
   --ok: #1d7a4c;
   --warn: #a85700;
   --focus: #1f5fbf;
@@ -243,7 +245,8 @@ details.more summary {
   letter-spacing: -0.01em;
 }
 
-.readout .value.power { color: var(--run); }
+.readout .value.power { color: var(--power); }
+.readout .value.torque { color: var(--torque); }
 
 .readout .unit { font-family: var(--font-cond); font-weight: 500; font-size: var(--t-lg); }
 .readout .at { font-size: var(--t-sm); color: var(--ink-2); }
@@ -263,14 +266,14 @@ details.more summary {
 .specs div { display: flex; gap: 6px; }
 .specs dt { color: var(--ink-3); }
 .specs dd { margin: 0; font-weight: 500; }
-.specs dd.knock-on { color: var(--run); }
+.specs dd.knock-on { color: var(--alert); }
 
 .status-line { font-size: var(--t-sm); color: var(--ink-2); min-height: 1.5em; margin-top: 6px; }
 
 .problem {
   margin: 4px 0 8px;
   padding: 10px 14px;
-  border-left: 3px solid var(--run);
+  border-left: 3px solid var(--alert);
   background: #fdf3f4;
 }
 
@@ -288,6 +291,7 @@ details.more summary {
 }
 
 .legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.legend .run-key:first-of-type { margin-left: 10px; }
 .legend .replay { margin-left: auto; padding: 4px 12px; font-size: var(--t-sm); }
 .legend svg { flex: none; }
 
@@ -366,7 +370,7 @@ details.more summary {
 .runs { list-style: none; margin: 0; padding: 0; }
 .runs li { padding: 9px 0; border-bottom: 1px solid var(--grid); }
 .runs .top { display: flex; align-items: center; gap: 8px; }
-.runs .swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; border: 1px solid var(--rule); }
+.runs .swatch { width: 16px; flex: none; display: inline-flex; align-items: center; }
 .runs .name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .runs .meta { font-size: var(--t-xs); color: var(--ink-3); margin: 2px 0 0 20px; }
 .runs .nums { font-size: var(--t-sm); margin-left: 20px; }

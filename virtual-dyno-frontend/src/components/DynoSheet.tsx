@@ -1,8 +1,9 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { liveAt, maskRows, prefersReducedMotion, useReplay } from '../replay';
-import type { Row, Series } from '../series';
+import { POWER_COLOR, TORQUE_COLOR, type Row, type Series } from '../series';
 import type { DynoResult } from '../types';
 import { DynoChart } from './DynoChart';
+import { LineSample } from './LineSample';
 import { SheetHeader } from './SheetHeader';
 import { TraceStrips } from './TraceStrips';
 
@@ -64,23 +65,17 @@ export function DynoSheet({ result, series, rows, minRpm, maxRpm, busy, notice, 
       </div>
       <div className="legend">
         <span className="key">
-          <svg width="26" height="8" aria-hidden="true">
-            <line x1="1" y1="4" x2="25" y2="4" stroke="var(--ink)" strokeWidth="2.5" />
-          </svg>
+          <LineSample color={POWER_COLOR} width={3} />
           Power
         </span>
         <span className="key">
-          <svg width="26" height="8" aria-hidden="true">
-            <line x1="1" y1="4" x2="25" y2="4" stroke="var(--ink)" strokeWidth="2" strokeDasharray="6 4" />
-          </svg>
+          <LineSample color={TORQUE_COLOR} width={3} />
           Torque
         </span>
         {series.length > 1 &&
           series.map(s => (
-            <span className="key" key={s.id}>
-              <svg width="10" height="10" aria-hidden="true">
-                <rect width="10" height="10" rx="2" fill={s.color} />
-              </svg>
+            <span className="key run-key" key={s.id}>
+              <LineSample dash={s.dash} width={2} />
               {s.name}
             </span>
           ))}
